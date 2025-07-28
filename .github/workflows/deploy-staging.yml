@@ -14,7 +14,7 @@ jobs:
       - staging
     env:
       ENVIRONMENT: staging
-      DOMAIN: ${{ secrets.DOMAIN_STAGING }}
+      DOMAIN: test
       STACK_NAME: ${{ secrets.STACK_NAME_STAGING }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
