@@ -12,38 +12,19 @@ jobs:
     runs-on:
       - self-hosted
       - staging
-    env:
-      ENVIRONMENT: staging
-      DOMAIN: ${{ secrets.DOMAIN_STAGING }}
-      STACK_NAME: ${{ secrets.STACK_NAME_STAGING }}
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
-      FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      EMAILS_FROM_EMAIL: ${{ secrets.EMAILS_FROM_EMAIL }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    environment:
+      name: staging
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Create .env file from template
+      - name: Setup environment
         run: |
           cp .env.example .env
           sed -i "s/ENVIRONMENT=local/ENVIRONMENT=staging/g" .env
-          sed -i "s/DOMAIN=.*/DOMAIN=${{ secrets.DOMAIN_STAGING }}/g" .env
-          sed -i "s/STACK_NAME=.*/STACK_NAME=${{ secrets.STACK_NAME_STAGING }}/g" .env
-          sed -i "s/SECRET_KEY=.*/SECRET_KEY=${{ secrets.SECRET_KEY }}/g" .env
-          sed -i "s/FIRST_SUPERUSER=.*/FIRST_SUPERUSER=${{ secrets.FIRST_SUPERUSER }}/g" .env
-          sed -i "s/FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=${{ secrets.FIRST_SUPERUSER_PASSWORD }}/g" .env
-          sed -i "s/SMTP_HOST=.*/SMTP_HOST=${{ secrets.SMTP_HOST }}/g" .env
-          sed -i "s/SMTP_USER=.*/SMTP_USER=${{ secrets.SMTP_USER }}/g" .env
-          sed -i "s/SMTP_PASSWORD=.*/SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}/g" .env
-          sed -i "s/EMAILS_FROM_EMAIL=.*/EMAILS_FROM_EMAIL=${{ secrets.EMAILS_FROM_EMAIL }}/g" .env
-          sed -i "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}/g" .env
-          sed -i "s/SENTRY_DSN=.*/SENTRY_DSN=${{ secrets.SENTRY_DSN }}/g" .env
           
-      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_STAGING }} build
-      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_STAGING }} up -d
+      - name: Build with Docker Compose
+        run: docker compose -f docker-compose.yml build
+          
+      - name: Deploy with Docker Compose
+        run: docker compose -f docker-compose.yml up -d
