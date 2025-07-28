@@ -21,7 +21,7 @@ jobs:
       - name: Export .env
         shell: bash
         run: |
-          set -a          # auto‑export all vars
+          set -a          # auto-export all vars
           source .env
           set +a
           echo "Loaded STACK_NAME=$STACK_NAME  DOMAIN=$DOMAIN"

@@ -1,32 +1,43 @@
-name: Deploy to Production
+name: Deploy to Staging
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches: [ master ]
 
 jobs:
   deploy:
-    # Do not deploy in the main repository, only in user projects
     if: github.repository_owner != 'fastapi'
-    runs-on:
-      - self-hosted
-      - production
-    env:
-      ENVIRONMENT: production
-      DOMAIN: ${{ secrets.DOMAIN_PRODUCTION }}
-      STACK_NAME: ${{ secrets.STACK_NAME_PRODUCTION }}
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
-      FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      EMAILS_FROM_EMAIL: ${{ secrets.EMAILS_FROM_EMAIL }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    runs-on: [ self-hosted, staging ]
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_PRODUCTION }} build
-      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_PRODUCTION }} up -d
+      # 1. Checkout code
+      - uses: actions/checkout@v4
+
+      # 2. Copy .env.example -> .env
+      - name: Copy env file
+        run: cp .env.example .env
+
+      # 3. Export the variables so $STACK_NAME, $DOMAIN … exist
+      - name: Export .env
+        shell: bash
+        run: |
+          set -a          # auto-export all vars
+          source .env
+          set +a
+          echo "Loaded STACK_NAME=$STACK_NAME  DOMAIN=$DOMAIN"
+
+      # 4. Build images
+      - name: Build
+        run: |
+          docker compose --env-file .env \
+                         -f docker-compose.yml \
+                         --project-name "$STACK_NAME" \
+                         build
+
+      # 5. Start / update stack
+      - name: Compose up
+        run: |
+          docker compose --env-file .env \
+                         -f docker-compose.yml \
+                         --project-name "$STACK_NAME" \
+                         up -d --remove-orphans
