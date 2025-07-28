@@ -15,8 +15,8 @@ jobs:
     env:
       ENVIRONMENT: staging
       DOMAIN: test
-      STACK_NAME: ${{ secrets.STACK_NAME_STAGING }}
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      STACK_NAME: test
+      SECRET_KEY: test2
       FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
       FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
       SMTP_HOST: ${{ secrets.SMTP_HOST }}
