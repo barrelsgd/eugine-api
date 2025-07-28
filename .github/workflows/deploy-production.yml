@@ -1,43 +1,49 @@
-name: Deploy to Staging
+name: Deploy to Production
 
 on:
-  push:
-    branches: [ master ]
+  release:
+    types:
+      - published
 
 jobs:
   deploy:
+    # Do not deploy in the main repository, only in user projects
     if: github.repository_owner != 'fastapi'
-    runs-on: [ self-hosted, staging ]
-
+    runs-on:
+      - self-hosted
+      - production
+    env:
+      ENVIRONMENT: production
+      DOMAIN: ${{ secrets.DOMAIN_PRODUCTION }}
+      STACK_NAME: ${{ secrets.STACK_NAME_PRODUCTION }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
+      FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      EMAILS_FROM_EMAIL: ${{ secrets.EMAILS_FROM_EMAIL }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
     steps:
-      # 1. Checkout code
-      - uses: actions/checkout@v4
-
-      # 2. Copy .env.example -> .env
-      - name: Copy env file
-        run: cp .env.example .env
-
-      # 3. Export the variables so $STACK_NAME, $DOMAIN … exist
-      - name: Export .env
-        shell: bash
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Create .env file from template
         run: |
-          set -a          # auto-export all vars
-          source .env
-          set +a
-          echo "Loaded STACK_NAME=$STACK_NAME  DOMAIN=$DOMAIN"
-
-      # 4. Build images
-      - name: Build
-        run: |
-          docker compose --env-file .env \
-                         -f docker-compose.yml \
-                         --project-name "$STACK_NAME" \
-                         build
-
-      # 5. Start / update stack
-      - name: Compose up
-        run: |
-          docker compose --env-file .env \
-                         -f docker-compose.yml \
-                         --project-name "$STACK_NAME" \
-                         up -d --remove-orphans
+          cp .env.example .env
+          sed -i "s/ENVIRONMENT=local/ENVIRONMENT=production/g" .env
+          sed -i "s/DOMAIN=.*/DOMAIN=${{ secrets.DOMAIN_PRODUCTION }}/g" .env
+          sed -i "s/STACK_NAME=.*/STACK_NAME=${{ secrets.STACK_NAME_PRODUCTION }}/g" .env
+          sed -i "s/SECRET_KEY=.*/SECRET_KEY=${{ secrets.SECRET_KEY }}/g" .env
+          sed -i "s/FIRST_SUPERUSER=.*/FIRST_SUPERUSER=${{ secrets.FIRST_SUPERUSER }}/g" .env
+          sed -i "s/FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=${{ secrets.FIRST_SUPERUSER_PASSWORD }}/g" .env
+          sed -i "s/SMTP_HOST=.*/SMTP_HOST=${{ secrets.SMTP_HOST }}/g" .env
+          sed -i "s/SMTP_USER=.*/SMTP_USER=${{ secrets.SMTP_USER }}/g" .env
+          sed -i "s/SMTP_PASSWORD=.*/SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}/g" .env
+          sed -i "s/EMAILS_FROM_EMAIL=.*/EMAILS_FROM_EMAIL=${{ secrets.EMAILS_FROM_EMAIL }}/g" .env
+          sed -i "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}/g" .env
+          sed -i "s/SENTRY_DSN=.*/SENTRY_DSN=${{ secrets.SENTRY_DSN }}/g" .env
+          
+      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_PRODUCTION }} build
+      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_PRODUCTION }} up -d
