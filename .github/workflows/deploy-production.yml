@@ -39,32 +39,31 @@ jobs:
           set +a
           docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME build
           
-      - name: Deploy with Docker Compose
+      - name: Deploy
         run: |
-          set -a
-          source .env
-          set +a
-          # Start all services except prestart
-          docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up -d --remove-orphans --no-deps db
-          # Wait for db to be ready
-          echo "Waiting for database to be ready..."
-          sleep 10
-          # Start prestart service
-          echo "Starting prestart service..."
-          if ! docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up --exit-code-from prestart prestart; then
-            echo "Prestart service failed. Container logs:"
-            docker logs ${STACK_NAME}-prestart-1 || true
-            exit 1
-          fi
-          # Start remaining services
-          echo "Starting remaining services..."
-          docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up -d --remove-orphans
+          set -x  # Enable debug output
           
-      - name: Verify services
-        run: |
-          set -a
-          source .env
-          set +a
+          # Start database first
+          echo "Starting database..."
+          docker compose --env-file .env \
+                       -f docker-compose.yml \
+                       --project-name "$STACK_NAME" \
+                       up -d db
+          
+          # Wait for database to be ready
+          echo "Waiting for database to be ready..."
+          for i in {1..10}; do
+            if docker compose --project-name "$STACK_NAME" ps db --status running | grep -q "healthy"; then
+              echo "Database is ready"
+              break
+            fi
+            echo "Waiting for database to be ready... ($i/10)"
+            sleep 5
+            if [ $i -eq 10 ]; then
+              echo "::error::Database did not become ready in time"
+              docker compose --project-name "$STACK_NAME" logs db
+              exit 1
+            fi
           echo "=== Running containers ==="
           docker ps -a --filter "name=$STACK_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           echo -e "\n=== Container logs (last 20 lines) ==="
