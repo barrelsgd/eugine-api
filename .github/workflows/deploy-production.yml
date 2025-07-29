@@ -25,8 +25,31 @@ jobs:
           sed -i "s/DOMAIN=localhost/DOMAIN=api.barrels.gd/g" .env
           sed -i "s/STACK_NAME=barrels-api/STACK_NAME=barrels-api-production/g" .env
           
+      - name: Load environment
+        run: |
+          set -a
+          source .env
+          set +a
+          echo "Using STACK_NAME=$STACK_NAME and DOMAIN=$DOMAIN"
+          
       - name: Build with Docker Compose
-        run: docker compose -f docker-compose.yml -p barrels-api-production build
+        run: |
+          set -a
+          source .env
+          set +a
+          docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME build
           
       - name: Deploy with Docker Compose
-        run: docker compose -f docker-compose.yml -p barrels-api-production up -d
+        run: |
+          set -a
+          source .env
+          set +a
+          docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up -d --remove-orphans
+          
+      - name: Verify services
+        run: |
+          set -a
+          source .env
+          set +a
+          echo "Running containers:"
+          docker ps -a --filter "name=$STACK_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
