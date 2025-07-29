@@ -22,6 +22,8 @@ jobs:
         run: |
           cp .env.example .env
           sed -i "s/ENVIRONMENT=local/ENVIRONMENT=staging/g" .env
+          sed -i "s/DOMAIN=localhost/DOMAIN=${DOMAIN_STAGING}/g" .env
+          sed -i "s/STACK_NAME=barrels-api/STACK_NAME=${STACK_NAME_STAGING}/g" .env
           
       - name: Build with Docker Compose
         run: docker compose -f docker-compose.yml build
