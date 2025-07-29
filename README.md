@@ -225,7 +225,7 @@ Frontend docs: [frontend/README.md](./frontend/README.md).
 Deployment docs: [deployment.md](./deployment.md).
 
 ## Development
-
+Successful deployment.
 General development docs: [development.md](./development.md).
 
 This includes using Docker Compose, custom local domains, `.env` configurations, etc.
