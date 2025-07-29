@@ -39,7 +39,7 @@ jobs:
           set +a
           docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME build
           
-      - name: Deploy
+      - name: Deploy with Docker Compose
         run: |
           set -x  # Enable debug output
           
@@ -64,10 +64,39 @@ jobs:
               docker compose --project-name "$STACK_NAME" logs db
               exit 1
             fi
-          echo "=== Running containers ==="
-          docker ps -a --filter "name=$STACK_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          echo -e "\n=== Container logs (last 20 lines) ==="
-          for container in $(docker ps -a --filter "name=$STACK_NAME" --format '{{.Names}}'); do
-            echo -e "\n=== $container logs ==="
-            docker logs --tail 20 $container 2>&1 || true
           done
+          
+          # Run prestart service and capture its output
+          echo "Running prestart service..."
+          if ! docker compose --env-file .env \
+                            -f docker-compose.yml \
+                            --project-name "$STACK_NAME" \
+                            up --exit-code-from prestart prestart 2>&1 | tee prestart.log; then
+            echo "::error::Prestart service failed with exit code $?"
+            echo "=== Prestart container logs ==="
+            docker compose --project-name "$STACK_NAME" logs prestart
+            echo "=== Prestart command output ==="
+            cat prestart.log
+            echo "=== Environment variables ==="
+            env | sort
+            echo "=== Current containers ==="
+            docker ps -a
+            echo "=== Database logs ==="
+            docker compose --project-name "$STACK_NAME" logs db
+            exit 1
+          fi
+          
+          # Start remaining services
+          echo "Starting all services..."
+          docker compose --env-file .env \
+                       -f docker-compose.yml \
+                       --project-name "$STACK_NAME" \
+                       up -d --remove-orphans
+          
+          # Show service status
+          echo "=== Service status ==="
+          docker compose --project-name "$STACK_NAME" ps
+          
+          # Show Traefik logs
+          echo "=== Traefik logs (last 20 lines) ==="
+          docker compose --project-name "$STACK_NAME" logs --tail=20 traefik 2>&1 || echo "No Traefik logs available"
