@@ -44,6 +44,20 @@ jobs:
           set -a
           source .env
           set +a
+          # Start all services except prestart
+          docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up -d --remove-orphans --no-deps db
+          # Wait for db to be ready
+          echo "Waiting for database to be ready..."
+          sleep 10
+          # Start prestart service
+          echo "Starting prestart service..."
+          if ! docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up --exit-code-from prestart prestart; then
+            echo "Prestart service failed. Container logs:"
+            docker logs ${STACK_NAME}-prestart-1 || true
+            exit 1
+          fi
+          # Start remaining services
+          echo "Starting remaining services..."
           docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME up -d --remove-orphans
           
       - name: Verify services
@@ -51,5 +65,10 @@ jobs:
           set -a
           source .env
           set +a
-          echo "Running containers:"
+          echo "=== Running containers ==="
           docker ps -a --filter "name=$STACK_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          echo -e "\n=== Container logs (last 20 lines) ==="
+          for container in $(docker ps -a --filter "name=$STACK_NAME" --format '{{.Names}}'); do
+            echo -e "\n=== $container logs ==="
+            docker logs --tail 20 $container 2>&1 || true
+          done
