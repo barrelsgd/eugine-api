@@ -25,35 +25,19 @@ jobs:
           sed -i "s/DOMAIN=localhost/DOMAIN=api.barrels.gd/g" .env
           sed -i "s/STACK_NAME=barrels-api/STACK_NAME=barrels-api-production/g" .env
           
-      - name: Load environment
-        run: |
-          set -a
-          source .env
-          set +a
-          echo "Using STACK_NAME=$STACK_NAME and DOMAIN=$DOMAIN"
-          
       - name: Build with Docker Compose
-        run: |
-          set -a
-          source .env
-          set +a
-          docker compose --env-file .env -f docker-compose.yml -p $STACK_NAME build
+        run: docker compose -f docker-compose.yml -p barrels-api-production build
           
       - name: Deploy with Docker Compose
         run: |
-          set -x  # Enable debug output
-          
           # Start database first
           echo "Starting database..."
-          docker compose --env-file .env \
-                       -f docker-compose.yml \
-                       --project-name "$STACK_NAME" \
-                       up -d db
+          docker compose -f docker-compose.yml -p barrels-api-production up -d db
           
           # Wait for database to be ready
           echo "Waiting for database to be ready..."
           for i in {1..10}; do
-            if docker compose --project-name "$STACK_NAME" ps db --status running | grep -q "healthy"; then
+            if docker compose -p barrels-api-production ps db --status running | grep -q "healthy"; then
               echo "Database is ready"
               break
             fi
@@ -61,68 +45,25 @@ jobs:
             sleep 5
             if [ $i -eq 10 ]; then
               echo "::error::Database did not become ready in time"
-              docker compose --project-name "$STACK_NAME" logs db
+              docker compose -p barrels-api-production logs db
               exit 1
             fi
           done
           
-          # Run prestart service and capture its output with more detailed logging
-          echo "Running prestart service with debug..."
-          
-          # First, start the prestart service in detached mode
-          docker compose --env-file .env \
-                       -f docker-compose.yml \
-                       --project-name "$STACK_NAME" \
-                       up -d prestart
-          
-          # Get the container ID
-          CONTAINER_ID=$(docker compose --project-name "$STACK_NAME" ps -q prestart)
-          
-          # Wait for the container to complete and capture its exit code
-          EXIT_CODE=$(docker wait $CONTAINER_ID)
-          
-          # Get the logs from the container
-          echo "=== Prestart container logs (full) ==="
-          docker logs $CONTAINER_ID 2>&1 || true
-          
-          # Show the last 50 lines of the logs for the error
-          echo -e "\n=== Last 50 lines of prestart logs ==="
-          docker logs --tail 50 $CONTAINER_ID 2>&1 || true
-          
-          # Show environment variables that might be relevant
-          echo -e "\n=== Environment variables ==="
-          env | grep -E 'DATABASE|POSTGRES|DB_|ENVIRONMENT|DOMAIN|STACK' | sort
-          
-          # Show database connection info
-          echo -e "\n=== Database connection check ==="
-          docker compose --project-name "$STACK_NAME" exec -T db psql -U postgres -c "SELECT 1" || echo "Failed to connect to database"
-          
-          # Show database logs
-          echo -e "\n=== Database logs (last 20 lines) ==="
-          docker compose --project-name "$STACK_NAME" logs --tail=20 db 2>&1 || true
-          
-          # Show all container status
-          echo -e "\n=== All containers status ==="
-          docker ps -a
-          
-          # If the prestart failed, exit with error
-          if [ "$EXIT_CODE" != "0" ]; then
-            echo "::error::Prestart service failed with exit code $EXIT_CODE"
-            exit 1
-          fi
-          fi
-          
           # Start remaining services
           echo "Starting all services..."
-          docker compose --env-file .env \
-                       -f docker-compose.yml \
-                       --project-name "$STACK_NAME" \
-                       up -d --remove-orphans
+          docker compose -f docker-compose.yml -p barrels-api-production up -d
           
           # Show service status
           echo "=== Service status ==="
-          docker compose --project-name "$STACK_NAME" ps
+          docker compose -p barrels-api-production ps
           
-          # Show Traefik logs
-          echo "=== Traefik logs (last 20 lines) ==="
-          docker compose --project-name "$STACK_NAME" logs --tail=20 traefik 2>&1 || echo "No Traefik logs available"
+          # Show logs for debugging
+          echo -e "\n=== Prestart logs ==="
+          docker compose -p barrels-api-production logs prestart --tail=50 2>&1 || echo "No prestart logs available"
+          
+          echo -e "\n=== Backend logs ==="
+          docker compose -p barrels-api-production logs backend --tail=20 2>&1 || echo "No backend logs available"
+          
+          echo -e "\n=== Traefik logs ==="
+          docker compose -p barrels-api-production logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
