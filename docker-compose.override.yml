@@ -9,6 +9,7 @@ services:
     image: traefik:3.0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - traefik-certs:/certificates
     ports:
       - "80:80"
       - "8090:8080"
@@ -54,6 +55,8 @@ services:
     restart: "no"
     ports:
       - "8080:8080"
+    networks:
+      - traefik-public
 
   backend:
     restart: "no"
@@ -61,7 +64,6 @@ services:
       - "8000:8000"
     build:
       context: ./backend
-    # command: sleep infinity  # Infinite loop to keep container alive doing nothing
     command:
       - fastapi
       - run
@@ -77,7 +79,6 @@ services:
             - .venv
         - path: ./backend/pyproject.toml
           action: rebuild
-    # TODO: remove once coverage is done locally
     volumes:
       - ./backend/htmlcov:/app/htmlcov
     environment:
@@ -85,6 +86,8 @@ services:
       SMTP_PORT: "1025"
       SMTP_TLS: "false"
       EMAILS_FROM_EMAIL: "noreply@example.com"
+    networks:
+      - traefik-public
 
   mailcatcher:
     image: schickling/mailcatcher
@@ -101,6 +104,8 @@ services:
       args:
         - VITE_API_URL=http://localhost:8000
         - NODE_ENV=development
+    networks:
+      - traefik-public
 
   playwright:
     build:
@@ -129,5 +134,6 @@ services:
 
 networks:
   traefik-public:
-    # For local dev, don't expect an external Traefik network
-    external: false
+    external: true
+volumes:
+  traefik-certs:
