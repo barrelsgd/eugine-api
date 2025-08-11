@@ -94,6 +94,17 @@ jobs:
         VIRTUAL_ENV: backend/.venv
     - run: docker compose build
     - run: docker compose down -v --remove-orphans
+    - name: Start services for tests
+      run: docker compose up -d db mailcatcher backend
+    - name: Wait for backend to be healthy
+      run: |
+        for i in {1..30}; do
+          if docker compose ps backend --status running | grep -q "healthy"; then
+            echo "Backend is healthy"; exit 0
+          fi
+          echo "Waiting for backend to be healthy... ($i)"; sleep 2
+        done
+        echo "Backend not healthy"; docker compose logs backend; exit 1
     - name: Run Playwright tests
       run: docker compose run --rm playwright npx playwright test --fail-on-flaky-tests --trace=retain-on-failure --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
     - run: docker compose down -v --remove-orphans
