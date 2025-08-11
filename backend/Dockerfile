@@ -1,6 +1,7 @@
-FROM python:3.10
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app/
 
@@ -40,4 +41,14 @@ COPY ./app /app/app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
 
-CMD ["fastapi", "run", "--workers", "4", "app/main.py"]
+# Create non-root user and adjust permissions for runtime
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+
+# Expose application port
+EXPOSE 8000
+
+# Drop privileges for runtime
+USER appuser
+
+# Use uvicorn as production server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

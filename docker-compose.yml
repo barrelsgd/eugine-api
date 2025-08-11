@@ -110,7 +110,11 @@ services:
       - SENTRY_DSN=${SENTRY_DSN-}
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys,urllib.request,socket; socket.setdefaulttimeout(3);\n\ntry:\n    r=urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/'); sys.exit(0 if r.status==200 else 1)\nexcept Exception:\n    sys.exit(1)"
       interval: 10s
       timeout: 5s
       retries: 5
