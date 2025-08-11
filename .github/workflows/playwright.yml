@@ -67,6 +67,8 @@ jobs:
         cp .env backend/.env
         # Export COMPOSE_PROJECT_NAME for docker compose resource namespacing
         echo "COMPOSE_PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | head -n1 | cut -d= -f2- | tr -d '"')" >> $GITHUB_ENV
+    - name: Create traefik network (CI)
+      run: docker network create traefik-public || true
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
