@@ -47,7 +47,7 @@ test("User can reset password successfully using the link", async ({
   const emailData = await findLastEmail({
     request,
     filter: (e) => e.recipients.includes(`<${email}>`),
-    timeout: 5000,
+    timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
   })
 
   await page.goto(
@@ -102,7 +102,7 @@ test("Weak new password validation", async ({ page, request }) => {
   const emailData = await findLastEmail({
     request,
     filter: (e) => e.recipients.includes(`<${email}>`),
-    timeout: 5000,
+    timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
   })
 
   await page.goto(
