@@ -24,6 +24,13 @@ jobs:
         with:
           version: "0.4.15"
           enable-cache: true
+      - name: Prepare .env for CI
+        run: |
+          cp .env.example .env
+          sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=local/' .env
+          grep -q '^SECRET_KEY=' .env || echo 'SECRET_KEY=changethis' >> .env
+          grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
+          if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
       - run: docker compose down -v --remove-orphans
       - run: docker compose up -d db mailcatcher
       - name: Migrate DB
