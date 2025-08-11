@@ -16,7 +16,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - run: cp .env.example .env
+      - name: Prepare .env for CI
+        run: |
+          cp .env.example .env
+          sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=local/' .env
+          grep -q '^SECRET_KEY=' .env || echo 'SECRET_KEY=changethis' >> .env
+          grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
+          if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
       - run: docker compose build
       - run: docker compose down -v --remove-orphans
       - run: docker compose up -d --wait backend frontend adminer
