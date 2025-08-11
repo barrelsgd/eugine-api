@@ -20,24 +20,33 @@ jobs:
       
       - name: Setup environment
         run: |
-          cp .env.example .env
-          sed -i "s/ENVIRONMENT=local/ENVIRONMENT=production/g" .env
-          sed -i "s/DOMAIN=localhost/DOMAIN=api.barrels.gd/g" .env
-          sed -i "s/STACK_NAME=barrels-api/STACK_NAME=barrels-api-production/g" .env
+          # Preserve existing .env if it exists
+          [ -f .env ] || cp .env.example .env
+          sed -i "s/^ENVIRONMENT=.*/ENVIRONMENT=production/" .env
+          sed -i "s/^DOMAIN=.*/DOMAIN=api.barrels.gd/" .env
+          sed -i "s/^STACK_NAME=.*/STACK_NAME=barrels-api/" .env
+          # Frontend public origin for emails and links
+          if grep -q '^FRONTEND_HOST=' .env; then sed -i "s|^FRONTEND_HOST=.*|FRONTEND_HOST=https://api.barrels.gd|" .env; else echo "FRONTEND_HOST=https://api.barrels.gd" >> .env; fi
+          # Compose project name (resource namespace)
+          if grep -q '^PROJECT_NAME=' .env; then sed -i "s/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api/" .env; else echo "PROJECT_NAME=barrels-api" >> .env; fi
+          # Distinct logical DB name for production
+          if grep -q '^POSTGRES_DB=' .env; then sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=app_prod/" .env; else echo "POSTGRES_DB=app_prod" >> .env; fi
+          # Expose PROJECT_NAME to subsequent steps
+          echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2)" >> $GITHUB_ENV
           
       - name: Build with Docker Compose
-        run: docker compose -f docker-compose.yml -p barrels-api-production build
+        run: docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
           
       - name: Deploy with Docker Compose
         run: |
           # Start database first
           echo "Starting database..."
-          docker compose -f docker-compose.yml -p barrels-api-production up -d db
+          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d db
           
           # Wait for database to be ready
           echo "Waiting for database to be ready..."
           for i in {1..10}; do
-            if docker compose -p barrels-api-production ps db --status running | grep -q "healthy"; then
+            if docker compose -p "${{ env.PROJECT_NAME }}" ps db --status running | grep -q "healthy"; then
               echo "Database is ready"
               break
             fi
@@ -45,25 +54,25 @@ jobs:
             sleep 5
             if [ $i -eq 10 ]; then
               echo "::error::Database did not become ready in time"
-              docker compose -p barrels-api-production logs db
+              docker compose -p "${{ env.PROJECT_NAME }}" logs db
               exit 1
             fi
           done
           
           # Start remaining services
           echo "Starting all services..."
-          docker compose -f docker-compose.yml -p barrels-api-production up -d
+          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
           
           # Show service status
           echo "=== Service status ==="
-          docker compose -p barrels-api-production ps
+          docker compose -p "${{ env.PROJECT_NAME }}" ps
           
           # Show logs for debugging
           echo -e "\n=== Prestart logs ==="
-          docker compose -p barrels-api-production logs prestart --tail=50 2>&1 || echo "No prestart logs available"
+          docker compose -p "${{ env.PROJECT_NAME }}" logs prestart --tail=50 2>&1 || echo "No prestart logs available"
           
           echo -e "\n=== Backend logs ==="
-          docker compose -p barrels-api-production logs backend --tail=20 2>&1 || echo "No backend logs available"
+          docker compose -p "${{ env.PROJECT_NAME }}" logs backend --tail=20 2>&1 || echo "No backend logs available"
           
           echo -e "\n=== Traefik logs ==="
-          docker compose -p barrels-api-production logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
+          docker compose -p "${{ env.PROJECT_NAME }}" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"

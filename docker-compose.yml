@@ -15,9 +15,9 @@ services:
       - .env
     environment:
       - PGDATA=/var/lib/postgresql/data/pgdata
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-default}
-      - POSTGRES_USER=${POSTGRES_USER:-default}
-      - POSTGRES_DB=${POSTGRES_DB:-default}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
 
   adminer:
     image: adminer
@@ -62,18 +62,18 @@ services:
       - FRONTEND_HOST=${FRONTEND_HOST:-default}
       - ENVIRONMENT=${ENVIRONMENT:-default}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-default}
-      - SECRET_KEY=${SECRET_KEY:-default}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
       - FIRST_SUPERUSER=${FIRST_SUPERUSER:-default}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-default}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
       - SMTP_HOST=${SMTP_HOST:-default}
       - SMTP_USER=${SMTP_USER:-default}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-default}
       - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL:-default}
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=${POSTGRES_PORT:-default}
-      - POSTGRES_DB=${POSTGRES_DB:-default}
-      - POSTGRES_USER=${POSTGRES_USER:-default}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-default}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - SENTRY_DSN=${SENTRY_DSN-}
 
   backend:
@@ -95,18 +95,18 @@ services:
       - FRONTEND_HOST=${FRONTEND_HOST:-default}
       - ENVIRONMENT=${ENVIRONMENT:-default}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-default}
-      - SECRET_KEY=${SECRET_KEY:-default}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
       - FIRST_SUPERUSER=${FIRST_SUPERUSER:-default}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-default}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
       - SMTP_HOST=${SMTP_HOST:-default}
       - SMTP_USER=${SMTP_USER:-default}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-default}
       - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL:-default}
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=${POSTGRES_PORT:-default}
-      - POSTGRES_DB=${POSTGRES_DB:-default}
-      - POSTGRES_USER=${POSTGRES_USER:-default}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-default}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - SENTRY_DSN=${SENTRY_DSN-}
 
     healthcheck:
