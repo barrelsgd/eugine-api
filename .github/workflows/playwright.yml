@@ -48,6 +48,25 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v4
+    - name: Prepare .env for CI (before any Python imports)
+      run: |
+        cp .env.example .env
+        sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=local/' .env
+        # Ensure required placeholders exist
+        grep -q '^SECRET_KEY=' .env || echo 'SECRET_KEY=changethis' >> .env
+        grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
+        grep -q '^PROJECT_NAME=' .env || echo 'PROJECT_NAME=playwright' >> .env
+        grep -q '^POSTGRES_SERVER=' .env || echo 'POSTGRES_SERVER=db' >> .env
+        grep -q '^POSTGRES_USER=' .env || echo 'POSTGRES_USER=postgres' >> .env
+        grep -q '^FIRST_SUPERUSER=' .env || echo 'FIRST_SUPERUSER=admin@example.com' >> .env
+        grep -q '^FIRST_SUPERUSER_PASSWORD=' .env || echo 'FIRST_SUPERUSER_PASSWORD=changethis' >> .env
+        # SENTRY_DSN must be empty or a valid URL
+        if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
+        # Also place a copy where Settings(env_file="../.env") will find it when CWD=backend
+        mkdir -p backend
+        cp .env backend/.env
+        # Export COMPOSE_PROJECT_NAME for docker compose resource namespacing
+        echo "COMPOSE_PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | head -n1 | cut -d= -f2- | tr -d '"')" >> $GITHUB_ENV
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
@@ -71,13 +90,6 @@ jobs:
     - run: uv run bash scripts/generate-client.sh
       env:
         VIRTUAL_ENV: backend/.venv
-    - name: Prepare .env for CI
-      run: |
-        cp .env.example .env
-        sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=local/' .env
-        grep -q '^SECRET_KEY=' .env || echo 'SECRET_KEY=changethis' >> .env
-        grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
-        if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
     - run: docker compose build
     - run: docker compose down -v --remove-orphans
     - name: Run Playwright tests
