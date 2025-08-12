@@ -136,6 +136,8 @@ services:
       - ./frontend/test-results:/app/test-results
     ports:
       - 9323:9323
+    networks:
+      - traefik-public
 
 networks:
   traefik-public:
