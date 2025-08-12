@@ -69,9 +69,9 @@ def send_email(
         response = message.send(to=email_to, smtp=smtp_options)
         logger.info(f"[EMAIL_DEBUG] Send successful - Response: {response}")
         logger.info(f"[EMAIL_DEBUG] Response type: {type(response)}")
-        if hasattr(response, 'status_code'):
+        if hasattr(response, "status_code"):
             logger.info(f"[EMAIL_DEBUG] Response status_code: {response.status_code}")
-        if hasattr(response, 'status_text'):
+        if hasattr(response, "status_text"):
             logger.info(f"[EMAIL_DEBUG] Response status_text: {response.status_text}")
     except Exception as e:
         logger.error(f"[EMAIL_DEBUG] Send failed with exception: {e}")
