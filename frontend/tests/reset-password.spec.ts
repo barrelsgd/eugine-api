@@ -7,6 +7,13 @@ import { logInUser, signUpNewUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
+// Generate shard-specific email suffix to avoid cross-shard interference
+const getShardId = () => process.env.PLAYWRIGHT_SHARD_INDEX || "local"
+const createShardEmail = (baseEmail: string) => {
+  const [local, domain] = baseEmail.split("@")
+  return `${local}_shard${getShardId()}@${domain}`
+}
+
 test("Password Recovery title is visible", async ({ page }) => {
   await page.goto("/recover-password")
 
@@ -34,9 +41,12 @@ test("User can reset password successfully using the link", async ({
   request,
 }) => {
   const fullName = "Test User"
-  const email = randomEmail()
+  const baseEmail = randomEmail()
+  const email = createShardEmail(baseEmail)
   const password = randomPassword()
   const newPassword = randomPassword()
+
+  console.log(`[test] Shard ${getShardId()}: Using email ${email}`)
 
   // Sign up a new user
   await signUpNewUser(page, fullName, email, password)
@@ -51,9 +61,15 @@ test("User can reset password successfully using the link", async ({
 
   await page.getByRole("button", { name: "Continue" }).click()
 
+  console.log(`[test] Shard ${getShardId()}: Password recovery request sent, waiting for email...`)
+  
+  // Add small delay to ensure backend has time to send email
+  await page.waitForTimeout(2000)
+
   const emailData = await findLastEmail({
     request,
     timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "60000"),
+    filter: (email) => email.recipients.some(recipient => recipient.includes(`shard${getShardId()}`))
   })
 
   await page.goto(
@@ -94,9 +110,12 @@ test("Expired or invalid reset link", async ({ page }) => {
 
 test("Weak new password validation", async ({ page, request }) => {
   const fullName = "Test User"
-  const email = randomEmail()
+  const baseEmail = randomEmail()
+  const email = createShardEmail(baseEmail)
   const password = randomPassword()
   const weakPassword = "123"
+
+  console.log(`[test] Shard ${getShardId()}: Using email ${email}`)
 
   // Sign up a new user
   await signUpNewUser(page, fullName, email, password)
@@ -110,9 +129,15 @@ test("Weak new password validation", async ({ page, request }) => {
   await page.getByPlaceholder("Email").fill(email)
   await page.getByRole("button", { name: "Continue" }).click()
 
+  console.log(`[test] Shard ${getShardId()}: Password recovery request sent, waiting for email...`)
+  
+  // Add small delay to ensure backend has time to send email
+  await page.waitForTimeout(2000)
+
   const emailData = await findLastEmail({
     request,
     timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "60000"),
+    filter: (email) => email.recipients.some(recipient => recipient.includes(`shard${getShardId()}`))
   })
 
   await page.goto(

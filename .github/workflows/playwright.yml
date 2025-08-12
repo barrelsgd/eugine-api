@@ -139,7 +139,7 @@ jobs:
       run: |
         echo "Message count after purge:" $(curl -s http://localhost:1080/messages | jq 'length') || true
     - name: Run Playwright tests
-      run: docker compose run --rm -e MAILCATCHER_TIMEOUT_MS=60000 -e MAILCATCHER_HOST=http://mailcatcher:1080 playwright npx playwright test --fail-on-flaky-tests --trace=retain-on-failure --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+      run: docker compose run --rm -e MAILCATCHER_TIMEOUT_MS=60000 -e MAILCATCHER_HOST=http://mailcatcher:1080 -e PLAYWRIGHT_SHARD_INDEX=${{ matrix.shardIndex }} playwright npx playwright test --fail-on-flaky-tests --trace=retain-on-failure --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
     - name: Show logs on failure
       if: failure()
       run: |
