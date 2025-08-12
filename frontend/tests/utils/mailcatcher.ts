@@ -4,6 +4,7 @@ type Email = {
   id: number
   recipients: string[]
   subject: string
+  created_at?: string
 }
 
 const DEFAULT_MAILCATCHER_BASE_URL = "http://mailcatcher:1080"
@@ -17,28 +18,54 @@ async function findEmail({
   filter,
 }: { request: APIRequestContext; filter?: (email: Email) => boolean }) {
   const baseUrl = getMailcatcherBaseUrl()
-  const response = await request.get(`${baseUrl}/messages`)
+  
+  try {
+    console.log(`[mailcatcher] GET ${baseUrl}/messages`)
+    const response = await request.get(`${baseUrl}/messages`)
 
-  if (!response.ok()) {
-    console.warn(
-      `[mailcatcher] GET ${baseUrl}/messages failed: ${response.status()} ${response.statusText()}`,
-    )
+    if (!response.ok()) {
+      const responseText = await response.text().catch(() => "failed to read response")
+      console.warn(
+        `[mailcatcher] GET ${baseUrl}/messages failed: ${response.status()} ${response.statusText()}, body: ${responseText}`,
+      )
+      return null
+    }
+
+    const responseText = await response.text()
+    console.log(`[mailcatcher] Raw response: ${responseText}`)
+    
+    let emails: Email[]
+    try {
+      emails = JSON.parse(responseText) as Email[]
+    } catch (parseError) {
+      console.error(`[mailcatcher] JSON parse error: ${parseError}, raw: ${responseText}`)
+      return null
+    }
+
+    console.log(`[mailcatcher] Found ${emails.length} total emails:`)
+    emails.forEach((email, index) => {
+      console.log(`  [${index}] ID: ${email.id}, Recipients: ${JSON.stringify(email.recipients)}, Subject: "${email.subject}", Created: ${email.created_at || 'unknown'}`)
+    })
+
+    if (filter) {
+      const originalCount = emails.length
+      emails = emails.filter(filter)
+      console.log(`[mailcatcher] After filter: ${emails.length}/${originalCount} emails`)
+    }
+
+    const email = emails[emails.length - 1]
+
+    if (email) {
+      console.log(`[mailcatcher] Selected email: ID ${email.id}, Subject: "${email.subject}"`)
+      return email as Email
+    }
+
+    console.log(`[mailcatcher] No email found (total: ${emails.length}, after filter: ${emails.length})`)
+    return null
+  } catch (error) {
+    console.error(`[mailcatcher] Request error: ${error}`)
     return null
   }
-
-  let emails = (await response.json()) as Email[]
-
-  if (filter) {
-    emails = emails.filter(filter)
-  }
-
-  const email = emails[emails.length - 1]
-
-  if (email) {
-    return email as Email
-  }
-
-  return null
 }
 
 export function findLastEmail({
@@ -51,11 +78,14 @@ export function findLastEmail({
   timeout?: number
 }) {
   const baseUrl = getMailcatcherBaseUrl()
-  console.log(`[mailcatcher] polling base: ${baseUrl}, timeout: ${timeout}ms, filter: ${!!filter}`)
+  console.log(`[mailcatcher] Starting polling: base=${baseUrl}, timeout=${timeout}ms, filter=${!!filter}`)
 
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
-      () => reject(new Error("Timeout while trying to get latest email")),
+      () => {
+        console.error(`[mailcatcher] TIMEOUT after ${timeout}ms - no email found`)
+        reject(new Error("Timeout while trying to get latest email"))
+      },
       timeout,
     ),
   )
@@ -63,19 +93,24 @@ export function findLastEmail({
   const checkEmails = async () => {
     let delay = 100
     const maxDelay = 2000
+    let attemptCount = 0
 
     while (true) {
+      attemptCount++
+      console.log(`[mailcatcher] Attempt #${attemptCount}`)
+      
       try {
         const emailData = await findEmail({ request, filter })
 
         if (emailData) {
+          console.log(`[mailcatcher] SUCCESS: Found email after ${attemptCount} attempts`)
           return emailData
         }
       } catch (err) {
-        console.warn(`[mailcatcher] transient error: ${(err as Error).message}`)
+        console.warn(`[mailcatcher] Attempt #${attemptCount} error: ${(err as Error).message}`)
       }
 
-      console.log(`[mailcatcher] retrying in ${delay}ms`)
+      console.log(`[mailcatcher] Attempt #${attemptCount} failed, retrying in ${delay}ms`)
       await new Promise((resolve) => setTimeout(resolve, delay))
       delay = Math.min(maxDelay, Math.floor(delay * 1.5))
     }

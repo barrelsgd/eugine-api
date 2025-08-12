@@ -37,6 +37,17 @@ def send_email(
     html_content: str = "",
 ) -> None:
     assert settings.emails_enabled, "no provided configuration for email variables"
+
+    # Debug logging for email send
+    logger.info(f"[EMAIL_DEBUG] Sending email to: {email_to}")
+    logger.info(f"[EMAIL_DEBUG] Subject: {subject}")
+    logger.info(f"[EMAIL_DEBUG] SMTP_HOST: {settings.SMTP_HOST}")
+    logger.info(f"[EMAIL_DEBUG] SMTP_PORT: {settings.SMTP_PORT}")
+    logger.info(f"[EMAIL_DEBUG] SMTP_TLS: {settings.SMTP_TLS}")
+    logger.info(f"[EMAIL_DEBUG] SMTP_SSL: {settings.SMTP_SSL}")
+    logger.info(f"[EMAIL_DEBUG] EMAILS_FROM_EMAIL: {settings.EMAILS_FROM_EMAIL}")
+    logger.info(f"[EMAIL_DEBUG] HTML content length: {len(html_content)}")
+
     message = emails.Message(
         subject=subject,
         html=html_content,
@@ -51,8 +62,21 @@ def send_email(
         smtp_options["user"] = settings.SMTP_USER
     if settings.SMTP_PASSWORD:
         smtp_options["password"] = settings.SMTP_PASSWORD
-    response = message.send(to=email_to, smtp=smtp_options)
-    logger.info(f"send email result: {response}")
+
+    logger.info(f"[EMAIL_DEBUG] Final SMTP options: {smtp_options}")
+
+    try:
+        response = message.send(to=email_to, smtp=smtp_options)
+        logger.info(f"[EMAIL_DEBUG] Send successful - Response: {response}")
+        logger.info(f"[EMAIL_DEBUG] Response type: {type(response)}")
+        if hasattr(response, 'status_code'):
+            logger.info(f"[EMAIL_DEBUG] Response status_code: {response.status_code}")
+        if hasattr(response, 'status_text'):
+            logger.info(f"[EMAIL_DEBUG] Response status_text: {response.status_text}")
+    except Exception as e:
+        logger.error(f"[EMAIL_DEBUG] Send failed with exception: {e}")
+        logger.error(f"[EMAIL_DEBUG] Exception type: {type(e)}")
+        raise
 
 
 def generate_test_email(email_to: str) -> EmailData:

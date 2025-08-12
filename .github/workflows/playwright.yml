@@ -148,6 +148,8 @@ jobs:
         docker compose logs --no-color prestart || true
         docker compose logs --no-color backend || true
         docker compose logs --no-color mailcatcher || true
+        echo "Backend email debug logs (last 50 lines):"
+        docker compose logs --no-color backend | grep -i "EMAIL_DEBUG" | tail -50 || true
         echo "MailCatcher messages (on failure):"
         curl -s http://localhost:1080/messages | jq -r '.[] | {id, recipients, subject, created_at} | @json' || true
         echo "MailCatcher messages from inside Playwright (on failure):"
