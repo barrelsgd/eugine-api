@@ -44,7 +44,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Create non-root user and adjust permissions for runtime
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 
-# Expose application port
+# Expose application ports
 EXPOSE 8000
 
 # Drop privileges for runtime
