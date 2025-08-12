@@ -10,7 +10,12 @@ async function findEmail({
   request,
   filter,
 }: { request: APIRequestContext; filter?: (email: Email) => boolean }) {
-  const response = await request.get(`${process.env.MAILCATCHER_HOST}/messages`)
+  const baseUrl = process.env.MAILCATCHER_HOST ?? "http://mailcatcher:1080"
+  const response = await request.get(`${baseUrl}/messages`)
+
+  if (!response.ok()) {
+    return null
+  }
 
   let emails = await response.json()
 
@@ -30,7 +35,7 @@ async function findEmail({
 export function findLastEmail({
   request,
   filter,
-  timeout = Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
+  timeout = Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "60000"),
 }: {
   request: APIRequestContext
   filter?: (email: Email) => boolean
@@ -45,10 +50,14 @@ export function findLastEmail({
 
   const checkEmails = async () => {
     while (true) {
-      const emailData = await findEmail({ request, filter })
+      try {
+        const emailData = await findEmail({ request, filter })
 
-      if (emailData) {
-        return emailData
+        if (emailData) {
+          return emailData
+        }
+      } catch {
+        // ignore transient request errors and retry
       }
       // Wait for 100ms before checking again
       await new Promise((resolve) => setTimeout(resolve, 100))

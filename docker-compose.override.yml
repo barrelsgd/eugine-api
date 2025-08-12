@@ -97,6 +97,8 @@ services:
     ports:
       - "1080:1080"
       - "1025:1025"
+    networks:
+      - traefik-public
 
   frontend:
     restart: "no"
