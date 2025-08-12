@@ -41,6 +41,8 @@ jobs:
           # Also place a copy where Settings(env_file="../.env") or similar may look when cwd=backend
           mkdir -p backend
           cp .env backend/.env
+      - name: Ensure traefik-public network exists
+        run: docker network inspect traefik-public >/dev/null 2>&1 || docker network create traefik-public
       - run: docker compose down -v --remove-orphans
       - run: docker compose up -d db mailcatcher
       - name: Wait for DB healthy
