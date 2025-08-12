@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import emails  # type: ignore
 import jwt
 from jinja2 import Template
 from jwt.exceptions import InvalidTokenError
@@ -48,31 +47,54 @@ def send_email(
     logger.info(f"[EMAIL_DEBUG] EMAILS_FROM_EMAIL: {settings.EMAILS_FROM_EMAIL}")
     logger.info(f"[EMAIL_DEBUG] HTML content length: {len(html_content)}")
 
-    message = emails.Message(
-        subject=subject,
-        html=html_content,
-        mail_from=(settings.EMAILS_FROM_NAME, settings.EMAILS_FROM_EMAIL),
-    )
-    smtp_options = {"host": settings.SMTP_HOST, "port": settings.SMTP_PORT}
-    if settings.SMTP_TLS:
-        smtp_options["tls"] = True
-    elif settings.SMTP_SSL:
-        smtp_options["ssl"] = True
-    if settings.SMTP_USER:
-        smtp_options["user"] = settings.SMTP_USER
-    if settings.SMTP_PASSWORD:
-        smtp_options["password"] = settings.SMTP_PASSWORD
-
-    logger.info(f"[EMAIL_DEBUG] Final SMTP options: {smtp_options}")
+    # Use standard smtplib instead of emails library
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     try:
-        response = message.send(to=email_to, smtp=smtp_options)
-        logger.info(f"[EMAIL_DEBUG] Send successful - Response: {response}")
-        logger.info(f"[EMAIL_DEBUG] Response type: {type(response)}")
-        if hasattr(response, "status_code"):
-            logger.info(f"[EMAIL_DEBUG] Response status_code: {response.status_code}")
-        if hasattr(response, "status_text"):
-            logger.info(f"[EMAIL_DEBUG] Response status_text: {response.status_text}")
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
+        msg['To'] = email_to
+
+        # Add HTML content
+        html_part = MIMEText(html_content, 'html')
+        msg.attach(html_part)
+
+        logger.info(f"[EMAIL_DEBUG] Created message with {len(html_content)} chars HTML")
+
+        # Connect to SMTP server
+        logger.info(f"[EMAIL_DEBUG] Connecting to {settings.SMTP_HOST}:{settings.SMTP_PORT}")
+        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
+
+        # Enable debug output
+        server.set_debuglevel(1)
+
+        # Handle TLS/SSL
+        if settings.SMTP_TLS:
+            logger.info("[EMAIL_DEBUG] Starting TLS")
+            server.starttls()
+        elif settings.SMTP_SSL:
+            logger.info("[EMAIL_DEBUG] Using SSL connection")
+            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
+
+        # Login if credentials provided
+        if settings.SMTP_USER and settings.SMTP_PASSWORD and settings.SMTP_HOST != "mailcatcher":
+            logger.info(f"[EMAIL_DEBUG] Logging in as {settings.SMTP_USER}")
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        else:
+            logger.info("[EMAIL_DEBUG] Skipping SMTP auth (not required for MailCatcher)")
+
+        # Send email
+        logger.info(f"[EMAIL_DEBUG] Sending email from {settings.EMAILS_FROM_EMAIL} to {email_to}")
+        result = server.send_message(msg)
+        server.quit()
+
+        logger.info(f"[EMAIL_DEBUG] Send successful - Result: {result}")
+        logger.info("[EMAIL_DEBUG] Email sent successfully using smtplib")
+
     except Exception as e:
         logger.error(f"[EMAIL_DEBUG] Send failed with exception: {e}")
         logger.error(f"[EMAIL_DEBUG] Exception type: {type(e)}")
