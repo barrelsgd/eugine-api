@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test"
+// Allow up to 120s for email-based flows in CI
+test.setTimeout(120_000)
 import { findLastEmail } from "./utils/mailcatcher"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser, signUpNewUser } from "./utils/user"
