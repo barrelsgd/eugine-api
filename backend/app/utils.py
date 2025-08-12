@@ -54,22 +54,25 @@ def send_email(
 
     try:
         # Create message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
-        msg['To'] = email_to
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
+        msg["To"] = email_to
 
         # Add HTML content
-        html_part = MIMEText(html_content, 'html')
+        html_part = MIMEText(html_content, "html")
         msg.attach(html_part)
 
-        logger.info(f"[EMAIL_DEBUG] Created message with {len(html_content)} chars HTML")
+        logger.info(
+            f"[EMAIL_DEBUG] Created message with {len(html_content)} chars HTML"
+        )
 
         # Connect to SMTP server
         if not settings.SMTP_HOST or not settings.SMTP_PORT:
             raise ValueError("SMTP_HOST and SMTP_PORT must be configured")
-            
-        logger.info(f"[EMAIL_DEBUG] Connecting to {settings.SMTP_HOST}:{settings.SMTP_PORT}")
+        logger.info(
+            f"[EMAIL_DEBUG] Connecting to {settings.SMTP_HOST}:{settings.SMTP_PORT}"
+        )
         server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
 
         # Enable debug output
@@ -86,14 +89,22 @@ def send_email(
             server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
 
         # Login if credentials provided
-        if settings.SMTP_USER and settings.SMTP_PASSWORD and settings.SMTP_HOST != "mailcatcher":
+        if (
+            settings.SMTP_USER
+            and settings.SMTP_PASSWORD
+            and settings.SMTP_HOST != "mailcatcher"
+        ):
             logger.info(f"[EMAIL_DEBUG] Logging in as {settings.SMTP_USER}")
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
         else:
-            logger.info("[EMAIL_DEBUG] Skipping SMTP auth (not required for MailCatcher)")
+            logger.info(
+                "[EMAIL_DEBUG] Skipping SMTP auth (not required for MailCatcher)"
+            )
 
         # Send email
-        logger.info(f"[EMAIL_DEBUG] Sending email from {settings.EMAILS_FROM_EMAIL} to {email_to}")
+        logger.info(
+            f"[EMAIL_DEBUG] Sending email from {settings.EMAILS_FROM_EMAIL} to {email_to}"
+        )
         result = server.send_message(msg)
         server.quit()
 

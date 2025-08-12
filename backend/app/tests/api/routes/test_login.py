@@ -50,9 +50,14 @@ def test_recovery_password(
 ) -> None:
     with (
         patch("app.utils.send_email", return_value=None),
+        patch("smtplib.SMTP") as mock_smtp,
         patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
         patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
     ):
+        # Configure the mock SMTP server
+        mock_server = mock_smtp.return_value
+        mock_server.send_message.return_value = {}
+
         email = "test@example.com"
         r = client.post(
             f"{settings.API_V1_STR}/password-recovery/{email}",

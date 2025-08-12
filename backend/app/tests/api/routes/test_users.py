@@ -38,9 +38,14 @@ def test_create_user_new_email(
 ) -> None:
     with (
         patch("app.utils.send_email", return_value=None),
+        patch("smtplib.SMTP") as mock_smtp,
         patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
         patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
     ):
+        # Configure the mock SMTP server
+        mock_server = mock_smtp.return_value
+        mock_server.send_message.return_value = {}
+
         username = random_email()
         password = random_lower_string()
         data = {"email": username, "password": password}
