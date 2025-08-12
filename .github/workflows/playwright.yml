@@ -118,7 +118,7 @@ jobs:
       run: |
         for i in {1..30}; do
           if curl -sf http://localhost:1080/messages >/dev/null; then
-            echo "MailCatcher API is up"; exit 0
+            echo "MailCatcher API is up."; exit 0
           fi
           echo "Waiting for MailCatcher... ($i)"; sleep 2
         done
