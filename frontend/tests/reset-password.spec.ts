@@ -63,6 +63,16 @@ test("User can reset password successfully using the link", async ({
 
   console.log(`[test] Shard ${getShardId()}: Password recovery request sent, waiting for email...`)
   
+  // Wait for the API request to complete and check response
+  await page.waitForTimeout(1000)
+  
+  // Check if there were any network errors
+  page.on('response', response => {
+    if (response.url().includes('/password-recovery/')) {
+      console.log(`[test] Shard ${getShardId()}: Password recovery API response: ${response.status()} ${response.statusText()}`)
+    }
+  })
+  
   // Add small delay to ensure backend has time to send email
   await page.waitForTimeout(2000)
 
@@ -130,6 +140,16 @@ test("Weak new password validation", async ({ page, request }) => {
   await page.getByRole("button", { name: "Continue" }).click()
 
   console.log(`[test] Shard ${getShardId()}: Password recovery request sent, waiting for email...`)
+  
+  // Wait for the API request to complete and check response
+  await page.waitForTimeout(1000)
+  
+  // Check if there were any network errors
+  page.on('response', response => {
+    if (response.url().includes('/password-recovery/')) {
+      console.log(`[test] Shard ${getShardId()}: Password recovery API response: ${response.status()} ${response.statusText()}`)
+    }
+  })
   
   // Add small delay to ensure backend has time to send email
   await page.waitForTimeout(2000)
