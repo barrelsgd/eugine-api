@@ -6,8 +6,10 @@ type Email = {
   subject: string
 }
 
+const DEFAULT_MAILCATCHER_BASE_URL = "http://mailcatcher:1080"
+
 function getMailcatcherBaseUrl(): string {
-  return process.env.MAILCATCHER_HOST ?? "http://mailcatcher:1080"
+  return process.env.MAILCATCHER_HOST ?? DEFAULT_MAILCATCHER_BASE_URL
 }
 
 async function findEmail({
@@ -18,7 +20,6 @@ async function findEmail({
   const response = await request.get(`${baseUrl}/messages`)
 
   if (!response.ok()) {
-    // Log status for diagnostics, but keep returning null to allow retry loop
     console.warn(
       `[mailcatcher] GET ${baseUrl}/messages failed: ${response.status()} ${response.statusText()}`,
     )
@@ -50,7 +51,7 @@ export function findLastEmail({
   timeout?: number
 }) {
   const baseUrl = getMailcatcherBaseUrl()
-  console.log(`[mailcatcher] polling base: ${baseUrl}, timeout: ${timeout}ms`)
+  console.log(`[mailcatcher] polling base: ${baseUrl}, timeout: ${timeout}ms, filter: ${!!filter}`)
 
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
@@ -73,7 +74,8 @@ export function findLastEmail({
       } catch (err) {
         console.warn(`[mailcatcher] transient error: ${(err as Error).message}`)
       }
-      // backoff up to maxDelay
+
+      console.log(`[mailcatcher] retrying in ${delay}ms`)
       await new Promise((resolve) => setTimeout(resolve, delay))
       delay = Math.min(maxDelay, Math.floor(delay * 1.5))
     }

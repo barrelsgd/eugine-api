@@ -88,10 +88,11 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
-    // Explicit host/port so Playwright can detect readiness consistently in CI
-    command: 'npm run dev -- --port 5173 --host 0.0.0.0',
-    url: 'http://localhost:5173',
-    timeout: 120_000,
-    reuseExistingServer: !process.env.CI,
-  },
+webServer: {
+  // Explicit host/port so Playwright can detect readiness consistently in CI
+  command: 'npm run dev -- --port 5173 --host 0.0.0.0',
+  url: 'http://localhost:5173',
+  timeout: 120_000,
+  reuseExistingServer: !process.env.CI,
+},
+});

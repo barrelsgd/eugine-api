@@ -153,7 +153,7 @@ jobs:
         echo "MailCatcher messages from inside Playwright (on failure):"
         docker compose run --rm playwright sh -lc '
           echo "MAILCATCHER_HOST=$MAILCATCHER_HOST";
-          curl -s http://mailcatcher:1080/messages | jq length || true;
+          curl -s http://mailcatcher:1080/messages | node -e "let s='';process.stdin.on('data',c=>s+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(s).length)}catch(e){console.log('parse_error')}})" || true;
         '
     - run: docker compose down -v --remove-orphans
     - name: Upload blob report to GitHub Actions Artifacts
