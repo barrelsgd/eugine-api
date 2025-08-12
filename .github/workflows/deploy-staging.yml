@@ -18,22 +18,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup environment
+      - name: Validate environment (read-only)
         run: |
-          # Preserve existing .env if it exists
-          [ -f .env ] || cp .env.example .env
-          sed -i "s/^ENVIRONMENT=.*/ENVIRONMENT=staging/" .env
-          sed -i "s/^DOMAIN=.*/DOMAIN=staging.api.barrels.gd/" .env
-          sed -i "s/^STACK_NAME=.*/STACK_NAME=barrels-api-staging/" .env
-          # Frontend public origin for emails and links
-          if grep -q '^FRONTEND_HOST=' .env; then sed -i "s|^FRONTEND_HOST=.*|FRONTEND_HOST=https://staging.api.barrels.gd|" .env; else echo "FRONTEND_HOST=https://staging.api.barrels.gd" >> .env; fi
-          # Compose project name (resource namespace)
-          if grep -q '^PROJECT_NAME=' .env; then sed -i "s/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api-staging/" .env; else echo "PROJECT_NAME=barrels-api-staging" >> .env; fi
-          # Distinct logical DB name for staging
-          if grep -q '^POSTGRES_DB=' .env; then sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=app_staging/" .env; else echo "POSTGRES_DB=app_staging" >> .env; fi
-          # Expose PROJECT_NAME to subsequent steps
+          # Require pre-provisioned .env on the VM; do not create or modify it here
+          if [ ! -f .env ]; then
+            echo "ERROR: .env is missing on the runner. Create it once on the VM and re-run."; exit 1;
+          fi
+
+          # Read-only validations (no sed/cp)
+          grep -q '^ENVIRONMENT=staging$' .env || { echo 'ERROR: ENVIRONMENT must be staging'; exit 1; }
+          grep -q '^DOMAIN=staging.api.barrels.gd$' .env || { echo 'ERROR: DOMAIN must be staging.api.barrels.gd'; exit 1; }
+          grep -q '^STACK_NAME=barrels-api-staging$' .env || { echo 'ERROR: STACK_NAME must be barrels-api-staging'; exit 1; }
+          grep -q '^FRONTEND_HOST=https://staging.api.barrels.gd$' .env || { echo 'ERROR: FRONTEND_HOST must be https://staging.api.barrels.gd'; exit 1; }
+          grep -q '^POSTGRES_DB=app_staging$' .env || { echo 'ERROR: POSTGRES_DB must be app_staging'; exit 1; }
+
+          # Security checks — fail if insecure defaults exist; do not auto-fix
+          for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
+            if ! grep -q "^${v}=" .env; then echo "ERROR: ${v} missing in .env"; exit 1; fi
+            if grep -q "^${v}=changethis$" .env; then echo "ERROR: ${v} uses insecure default value"; exit 1; fi
+          done
+
+          # SENTRY_DSN must be empty or valid; explicitly block '1' which caused past failures
+          if grep -q '^SENTRY_DSN=1$' .env; then echo 'ERROR: SENTRY_DSN must be empty or a valid DSN URL'; exit 1; fi
+
+          # Expose PROJECT_NAME to subsequent steps (read-only)
           echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2)" >> $GITHUB_ENV
-          
+      
       - name: Build with Docker Compose
         run: docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
           
