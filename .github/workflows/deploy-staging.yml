@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: false  # preserve untracked files (e.g., .env) on self-hosted runner workspace
       
       - name: Validate environment (read-only)
         run: |
