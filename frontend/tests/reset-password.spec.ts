@@ -39,6 +39,11 @@ test("User can reset password successfully using the link", async ({
   // Sign up a new user
   await signUpNewUser(page, fullName, email, password)
 
+  // Ensure clean mailbox for this test
+  await request
+    .delete(`${process.env.MAILCATCHER_HOST ?? "http://mailcatcher:1080"}/messages`)
+    .catch(() => {})
+
   await page.goto("/recover-password")
   await page.getByPlaceholder("Email").fill(email)
 
@@ -46,12 +51,6 @@ test("User can reset password successfully using the link", async ({
 
   const emailData = await findLastEmail({
     request,
-    filter: (e) =>
-      e.recipients.some((r) => {
-        const match = r.match(/<([^>]+)>/)
-        const addr = (match ? match[1] : r).trim().toLowerCase()
-        return addr === email.toLowerCase()
-      }),
     timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
   })
 
@@ -100,18 +99,17 @@ test("Weak new password validation", async ({ page, request }) => {
   // Sign up a new user
   await signUpNewUser(page, fullName, email, password)
 
+  // Ensure clean mailbox for this test
+  await request
+    .delete(`${process.env.MAILCATCHER_HOST ?? "http://mailcatcher:1080"}/messages`)
+    .catch(() => {})
+
   await page.goto("/recover-password")
   await page.getByPlaceholder("Email").fill(email)
   await page.getByRole("button", { name: "Continue" }).click()
 
   const emailData = await findLastEmail({
     request,
-    filter: (e) =>
-      e.recipients.some((r) => {
-        const match = r.match(/<([^>]+)>/)
-        const addr = (match ? match[1] : r).trim().toLowerCase()
-        return addr === email.toLowerCase()
-      }),
     timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
   })
 

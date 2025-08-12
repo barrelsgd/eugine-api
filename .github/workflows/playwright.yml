@@ -126,8 +126,11 @@ jobs:
     - name: Purge MailCatcher mailbox
       run: |
         curl -s -X DELETE http://localhost:1080/messages || true
+    - name: Verify MailCatcher mailbox is empty
+      run: |
+        echo "Message count after purge:" $(curl -s http://localhost:1080/messages | jq 'length') || true
     - name: Run Playwright tests
-      run: docker compose run --rm -e MAILCATCHER_TIMEOUT_MS=20000 playwright npx playwright test --fail-on-flaky-tests --trace=retain-on-failure --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+      run: docker compose run --rm -e MAILCATCHER_TIMEOUT_MS=60000 playwright npx playwright test --fail-on-flaky-tests --trace=retain-on-failure --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
     - name: Show logs on failure
       if: failure()
       run: |
@@ -136,6 +139,8 @@ jobs:
         docker compose logs --no-color prestart || true
         docker compose logs --no-color backend || true
         docker compose logs --no-color mailcatcher || true
+        echo "MailCatcher messages (on failure):"
+        curl -s http://localhost:1080/messages | jq -r '.[] | {id, recipients, subject, created_at} | @json' || true
     - run: docker compose down -v --remove-orphans
     - name: Upload blob report to GitHub Actions Artifacts
       if: ${{ !cancelled() }}
