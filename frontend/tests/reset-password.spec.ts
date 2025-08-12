@@ -53,11 +53,11 @@ test("User can reset password successfully using the link", async ({
 
   const emailData = await findLastEmail({
     request,
-    timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
+    timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "60000"),
   })
 
   await page.goto(
-    `${process.env.MAILCATCHER_HOST}/messages/${emailData.id}.html`,
+    `${process.env.MAILCATCHER_HOST ?? "http://mailcatcher:1080"}/messages/${emailData.id}.html`,
   )
 
   const selector = 'a[href*="/reset-password?token="]'
@@ -112,11 +112,11 @@ test("Weak new password validation", async ({ page, request }) => {
 
   const emailData = await findLastEmail({
     request,
-    timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "15000"),
+    timeout: Number(process.env.MAILCATCHER_TIMEOUT_MS ?? "60000"),
   })
 
   await page.goto(
-    `${process.env.MAILCATCHER_HOST}/messages/${emailData.id}.html`,
+    `${process.env.MAILCATCHER_HOST ?? "http://mailcatcher:1080"}/messages/${emailData.id}.html`,
   )
 
   const selector = 'a[href*="/reset-password?token="]'
