@@ -66,6 +66,9 @@ def send_email(
         logger.info(f"[EMAIL_DEBUG] Created message with {len(html_content)} chars HTML")
 
         # Connect to SMTP server
+        if not settings.SMTP_HOST or not settings.SMTP_PORT:
+            raise ValueError("SMTP_HOST and SMTP_PORT must be configured")
+            
         logger.info(f"[EMAIL_DEBUG] Connecting to {settings.SMTP_HOST}:{settings.SMTP_PORT}")
         server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
 
@@ -78,6 +81,8 @@ def send_email(
             server.starttls()
         elif settings.SMTP_SSL:
             logger.info("[EMAIL_DEBUG] Using SSL connection")
+            if not settings.SMTP_HOST or not settings.SMTP_PORT:
+                raise ValueError("SMTP_HOST and SMTP_PORT must be configured for SSL")
             server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
 
         # Login if credentials provided
