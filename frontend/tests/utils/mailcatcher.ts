@@ -91,13 +91,14 @@ export function findLastEmail({
   )
 
   const checkEmails = async () => {
-    let delay = 100
+    let delay = 500
     const maxDelay = 2000
     let attemptCount = 0
+    const maxAttempts = 5 // Reduced from unlimited to 5 attempts for faster feedback
 
-    while (true) {
+    while (attemptCount < maxAttempts) {
       attemptCount++
-      console.log(`[mailcatcher] Attempt #${attemptCount}`)
+      console.log(`[mailcatcher] Attempt #${attemptCount}/${maxAttempts}`)
       
       try {
         const emailData = await findEmail({ request, filter })
@@ -110,10 +111,15 @@ export function findLastEmail({
         console.warn(`[mailcatcher] Attempt #${attemptCount} error: ${(err as Error).message}`)
       }
 
-      console.log(`[mailcatcher] Attempt #${attemptCount} failed, retrying in ${delay}ms`)
-      await new Promise((resolve) => setTimeout(resolve, delay))
-      delay = Math.min(maxDelay, Math.floor(delay * 1.5))
+      if (attemptCount < maxAttempts) {
+        console.log(`[mailcatcher] Attempt #${attemptCount} failed, retrying in ${delay}ms`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        delay = Math.min(maxDelay, Math.floor(delay * 1.5))
+      }
     }
+    
+    console.error(`[mailcatcher] FAILED: No email found after ${maxAttempts} attempts`)
+    throw new Error(`No email found after ${maxAttempts} attempts`)
   }
 
   return Promise.race([timeoutPromise, checkEmails()])

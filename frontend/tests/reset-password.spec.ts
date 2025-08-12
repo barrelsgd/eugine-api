@@ -59,22 +59,50 @@ test("User can reset password successfully using the link", async ({
   await page.goto("/recover-password")
   await page.getByPlaceholder("Email").fill(email)
 
+  // Set up API response listener BEFORE clicking the button
+  const apiResponsePromise = new Promise<void>((resolve) => {
+    page.on('response', async response => {
+      if (response.url().includes('/password-recovery/')) {
+        const status = response.status()
+        const statusText = response.statusText()
+        console.log(`[test] Shard ${getShardId()}: Password recovery API response: ${status} ${statusText}`)
+        console.log(`[test] Shard ${getShardId()}: API URL: ${response.url()}`)
+        
+        try {
+          const responseBody = await response.text()
+          console.log(`[test] Shard ${getShardId()}: Response body: ${responseBody}`)
+        } catch (e) {
+          console.log(`[test] Shard ${getShardId()}: Could not read response body: ${e}`)
+        }
+        resolve()
+      }
+    })
+  })
+
+  // Also listen for request failures
+  page.on('requestfailed', request => {
+    if (request.url().includes('/password-recovery/')) {
+      console.log(`[test] Shard ${getShardId()}: Password recovery request FAILED: ${request.failure()?.errorText}`)
+    }
+  })
+
   await page.getByRole("button", { name: "Continue" }).click()
 
   console.log(`[test] Shard ${getShardId()}: Password recovery request sent, waiting for email...`)
   
-  // Wait for the API request to complete and check response
+  // Wait for the API response (max 10 seconds)
+  try {
+    await Promise.race([
+      apiResponsePromise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('API response timeout')), 10000))
+    ])
+    console.log(`[test] Shard ${getShardId()}: API response received, waiting for email processing...`)
+  } catch (e) {
+    console.log(`[test] Shard ${getShardId()}: API response timeout or error: ${e}`)
+  }
+  
+  // Small delay for email processing
   await page.waitForTimeout(1000)
-  
-  // Check if there were any network errors
-  page.on('response', response => {
-    if (response.url().includes('/password-recovery/')) {
-      console.log(`[test] Shard ${getShardId()}: Password recovery API response: ${response.status()} ${response.statusText()}`)
-    }
-  })
-  
-  // Add small delay to ensure backend has time to send email
-  await page.waitForTimeout(2000)
 
   const emailData = await findLastEmail({
     request,
@@ -137,22 +165,51 @@ test("Weak new password validation", async ({ page, request }) => {
 
   await page.goto("/recover-password")
   await page.getByPlaceholder("Email").fill(email)
+
+  // Set up API response listener BEFORE clicking the button
+  const apiResponsePromise = new Promise<void>((resolve) => {
+    page.on('response', async response => {
+      if (response.url().includes('/password-recovery/')) {
+        const status = response.status()
+        const statusText = response.statusText()
+        console.log(`[test] Shard ${getShardId()}: Password recovery API response: ${status} ${statusText}`)
+        console.log(`[test] Shard ${getShardId()}: API URL: ${response.url()}`)
+        
+        try {
+          const responseBody = await response.text()
+          console.log(`[test] Shard ${getShardId()}: Response body: ${responseBody}`)
+        } catch (e) {
+          console.log(`[test] Shard ${getShardId()}: Could not read response body: ${e}`)
+        }
+        resolve()
+      }
+    })
+  })
+
+  // Also listen for request failures
+  page.on('requestfailed', request => {
+    if (request.url().includes('/password-recovery/')) {
+      console.log(`[test] Shard ${getShardId()}: Password recovery request FAILED: ${request.failure()?.errorText}`)
+    }
+  })
+
   await page.getByRole("button", { name: "Continue" }).click()
 
   console.log(`[test] Shard ${getShardId()}: Password recovery request sent, waiting for email...`)
   
-  // Wait for the API request to complete and check response
+  // Wait for the API response (max 10 seconds)
+  try {
+    await Promise.race([
+      apiResponsePromise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('API response timeout')), 10000))
+    ])
+    console.log(`[test] Shard ${getShardId()}: API response received, waiting for email processing...`)
+  } catch (e) {
+    console.log(`[test] Shard ${getShardId()}: API response timeout or error: ${e}`)
+  }
+  
+  // Small delay for email processing
   await page.waitForTimeout(1000)
-  
-  // Check if there were any network errors
-  page.on('response', response => {
-    if (response.url().includes('/password-recovery/')) {
-      console.log(`[test] Shard ${getShardId()}: Password recovery API response: ${response.status()} ${response.statusText()}`)
-    }
-  })
-  
-  // Add small delay to ensure backend has time to send email
-  await page.waitForTimeout(2000)
 
   const emailData = await findLastEmail({
     request,
