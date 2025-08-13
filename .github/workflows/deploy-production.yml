@@ -1,23 +1,17 @@
-name: Deploy to Production
+name: Deploy to production
 
 on:
   release:
-    types:
-      - published
+    types: [published]
 
 jobs:
   deploy:
-    # Do not deploy in the main repository, only in user projects
-    if: github.repository_owner != 'fastapi'
-    runs-on:
-      - self-hosted
-      - production
-    environment:
-      name: production
+    runs-on: self-hosted
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup environment
         run: |
           # Normalize .env newlines to avoid sed/crlf issues
@@ -42,21 +36,14 @@ jobs:
           
       - name: Ensure FIRST_SUPERUSER_PASSWORD length <= 40
         run: |
-          set -euo pipefail
-          cur=$(grep -E '^FIRST_SUPERUSER_PASSWORD=' .env | cut -d'=' -f2- | tr -d '\r' || true)
-          if [ -z "${cur:-}" ]; then
-            new=$(openssl rand -base64 48 | tr -d '=\n' | cut -c1-32)
-            sed -i "s/^FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=${new}/" .env
-            echo "Set FIRST_SUPERUSER_PASSWORD to random 32-char value"
+          FIRST_SUPERUSER_PASSWORD=$(grep '^FIRST_SUPERUSER_PASSWORD=' .env | cut -d'=' -f2 | tr -d '\r' || echo "")
+          if [ ${#FIRST_SUPERUSER_PASSWORD} -gt 40 ]; then
+            echo "FIRST_SUPERUSER_PASSWORD is ${#FIRST_SUPERUSER_PASSWORD} chars, capping to 40"
+            NEW_PASSWORD=$(echo "$FIRST_SUPERUSER_PASSWORD" | cut -c1-40)
+            sed -i "s/^FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=$NEW_PASSWORD/" .env
+            echo "FIRST_SUPERUSER_PASSWORD capped to 40 characters"
           else
-            len=${#cur}
-            if [ "$len" -gt 40 ]; then
-              new=$(echo "$cur" | cut -c1-40)
-              sed -i "s/^FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=${new}/" .env
-              echo "Truncated FIRST_SUPERUSER_PASSWORD from $len to 40 characters"
-            else
-              echo "FIRST_SUPERUSER_PASSWORD length OK ($len)"
-            fi
+            echo "FIRST_SUPERUSER_PASSWORD length OK: ${#FIRST_SUPERUSER_PASSWORD} chars"
           fi
           
       - name: Retire legacy eugine-api stack (safety)
