@@ -32,6 +32,8 @@ jobs:
             if [ ! -f .env.example ]; then echo "ERROR: .env.example is missing in the repository root"; exit 1; fi
             cp .env.example "$ENV_FILE"
             chmod 600 "$ENV_FILE"
+            # Normalize potential CRLF endings from template
+            sed -i 's/\r$//' "$ENV_FILE"
 
             # Enforce staging values by stripping existing keys and appending desired ones
             tmp_file="$(mktemp)"
@@ -46,27 +48,41 @@ jobs:
               >> "$tmp_file"
             mv "$tmp_file" "$ENV_FILE"
 
-            # Generate strong secrets only if missing or using insecure defaults
+            # Generate strong secrets on first provision (always replace example values)
             gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
             for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
-              if ! grep -q "^${v}=" "$ENV_FILE"; then echo "${v}=$(gen_secret)" >> "$ENV_FILE"; continue; fi
-              # Replace insecure defaults whether quoted or unquoted
-              if grep -Eq "^${v}=(\"?changethis\"?)$" "$ENV_FILE"; then
-                awk -v k="$v" -v val="$(gen_secret)" '
-                  BEGIN{FS=OFS="="}
-                  $1==k {
-                    # normalize and replace only if value equals changethis (optionally quoted)
-                    gsub(/^\"?changethis\"?$/, val, $2)
-                  }
-                  {print}
-                ' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
-              fi
+              # Remove any existing line for the key (from template)
+              grep -v -E "^${v}=" "$ENV_FILE" > "$ENV_FILE.tmp" || true
+              mv "$ENV_FILE.tmp" "$ENV_FILE"
+              # Append fresh strong secret
+              echo "${v}=$(gen_secret)" >> "$ENV_FILE"
             done
 
             # SENTRY_DSN must be empty or valid; clear '1' if present
             awk 'BEGIN{FS=OFS="="} $1=="SENTRY_DSN" && $2=="1"{$2=""} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
           else
             echo "Existing env found at $ENV_FILE; not modifying."
+          fi
+
+      - name: Harden existing env secrets (idempotent)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "$ENV_FILE" ]; then
+            gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
+            changed=0
+            for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
+              if grep -Eq "^${v}=(\"?changethis\"?)$" "$ENV_FILE"; then
+                echo "Hardening insecure default for $v"
+                awk -v k="$v" -v val="$(gen_secret)" 'BEGIN{FS=OFS="="} $1==k{$2=val} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+                changed=1
+              fi
+            done
+            if grep -q '^SENTRY_DSN=1$' "$ENV_FILE"; then
+              awk 'BEGIN{FS=OFS="="} $1=="SENTRY_DSN"{$2=""} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+              changed=1
+            fi
+            if [ "$changed" -eq 1 ]; then chmod 600 "$ENV_FILE"; fi
           fi
 
       - name: Validate environment (read-only)
