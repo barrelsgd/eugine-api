@@ -136,7 +136,7 @@ jobs:
       - name: Deploy with Docker Compose
         run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
 
-      - name: On failure: diagnostics (compose logs)
+      - name: Show logs on failure
         if: failure()
         run: |
           echo "=== docker ps ===" && docker ps -a || true
