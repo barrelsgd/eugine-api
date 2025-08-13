@@ -23,6 +23,7 @@ jobs:
           clean: false  # preserve any pre-existing workspace files if present
 
       - name: Ensure external env exists (one-time provision)
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$(dirname "$ENV_FILE")"
@@ -32,25 +33,31 @@ jobs:
             cp .env.example "$ENV_FILE"
             chmod 600 "$ENV_FILE"
 
-            # Enforce staging values
-            sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=staging/' "$ENV_FILE"
-            sed -i 's|^DOMAIN=.*|DOMAIN=staging.api.barrels.gd|' "$ENV_FILE"
-            sed -i 's|^FRONTEND_HOST=.*|FRONTEND_HOST=https://staging.api.barrels.gd|' "$ENV_FILE"
-            sed -i 's/^STACK_NAME=.*/STACK_NAME=barrels-api-staging/' "$ENV_FILE"
-            sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=app_staging/' "$ENV_FILE"
-            sed -i 's/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api-staging/' "$ENV_FILE"
+            # Enforce staging values by stripping existing keys and appending desired ones
+            tmp_file="$(mktemp)"
+            grep -v -E '^(ENVIRONMENT|DOMAIN|FRONTEND_HOST|STACK_NAME|POSTGRES_DB|PROJECT_NAME)=' "$ENV_FILE" > "$tmp_file" || true
+            cat >> "$tmp_file" <<'EOF'
+ENVIRONMENT=staging
+DOMAIN=staging.api.barrels.gd
+FRONTEND_HOST=https://staging.api.barrels.gd
+STACK_NAME=barrels-api-staging
+POSTGRES_DB=app_staging
+PROJECT_NAME=barrels-api-staging
+EOF
+            mv "$tmp_file" "$ENV_FILE"
 
             # Generate strong secrets only if missing or using insecure defaults
             gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
             for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
               if ! grep -q "^${v}=" "$ENV_FILE"; then echo "${v}=$(gen_secret)" >> "$ENV_FILE"; continue; fi
               if grep -q "^${v}=changethis$" "$ENV_FILE"; then
-                sed -i "s/^${v}=changethis$/${v}=$(gen_secret)/" "$ENV_FILE"
+                # Replace exact insecure default line
+                awk -v k="$v" -v val="$(gen_secret)" 'BEGIN{FS=OFS="="} $1==k && $2=="changethis"{$2=val} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
               fi
             done
 
             # SENTRY_DSN must be empty or valid; clear '1' if present
-            if grep -q '^SENTRY_DSN=1$' "$ENV_FILE"; then sed -i 's/^SENTRY_DSN=1$/SENTRY_DSN=/' "$ENV_FILE"; fi
+            awk 'BEGIN{FS=OFS="="} $1=="SENTRY_DSN" && $2=="1"{$2=""} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
           else
             echo "Existing env found at $ENV_FILE; not modifying."
           fi
