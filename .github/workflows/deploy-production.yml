@@ -32,8 +32,8 @@ jobs:
           if grep -q '^FRONTEND_HOST=' .env; then sed -i "s|^FRONTEND_HOST=.*|FRONTEND_HOST=https://api.barrels.gd|" .env; else echo "FRONTEND_HOST=https://api.barrels.gd" >> .env; fi
           # Distinct logical DB name for production (optional)
           if grep -q '^POSTGRES_DB=' .env; then sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=app_prod/" .env; else echo "POSTGRES_DB=app_prod" >> .env; fi
-          # Validation: SENTRY_DSN must be empty or URL; block legacy '1'
-          if grep -q '^SENTRY_DSN=1$' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; fi
+          # SENTRY must be empty unless valid DSN; force empty to avoid legacy '1'
+          sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env
           # Expose PROJECT_NAME to subsequent steps
           echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2 | tr -d '\r')" >> $GITHUB_ENV
           # Debug echo to confirm consolidation
@@ -59,6 +59,10 @@ jobs:
             fi
           fi
           
+      - name: Retire legacy eugine-api stack (safety)
+        run: |
+          docker compose -f docker-compose.yml -p eugine-api down || true
+
       - name: Build with Docker Compose
         run: docker compose --env-file .env -f docker-compose.yml -p "barrels-api" build
           
