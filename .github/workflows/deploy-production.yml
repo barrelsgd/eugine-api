@@ -20,21 +20,25 @@ jobs:
       
       - name: Setup environment
         run: |
-          # Preserve existing .env if it exists
+          # Normalize .env newlines to avoid sed/crlf issues
           [ -f .env ] || cp .env.example .env
+          perl -pi -e 's/\r$//;' .env || true
+          # Preserve existing .env if it exists, then enforce prod values
           sed -i "s/^ENVIRONMENT=.*/ENVIRONMENT=production/" .env
           sed -i "s/^DOMAIN=.*/DOMAIN=api.barrels.gd/" .env
-          sed -i "s/^STACK_NAME=.*/STACK_NAME=barrels-api/" .env
-          # Frontend public origin for emails and links
-          if grep -q '^FRONTEND_HOST=' .env; then sed -i "s|^FRONTEND_HOST=.*|FRONTEND_HOST=https://api.barrels.gd|" .env; else echo "FRONTEND_HOST=https://api.barrels.gd" >> .env; fi
-          # Compose project name (resource namespace)
+          if grep -q '^STACK_NAME=' .env; then sed -i "s/^STACK_NAME=.*/STACK_NAME=barrels-api/" .env; else echo "STACK_NAME=barrels-api" >> .env; fi
           if grep -q '^PROJECT_NAME=' .env; then sed -i "s/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api/" .env; else echo "PROJECT_NAME=barrels-api" >> .env; fi
-          # Distinct logical DB name for production
+          # FRONTEND public origin for emails and links
+          if grep -q '^FRONTEND_HOST=' .env; then sed -i "s|^FRONTEND_HOST=.*|FRONTEND_HOST=https://api.barrels.gd|" .env; else echo "FRONTEND_HOST=https://api.barrels.gd" >> .env; fi
+          # Distinct logical DB name for production (optional)
           if grep -q '^POSTGRES_DB=' .env; then sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=app_prod/" .env; else echo "POSTGRES_DB=app_prod" >> .env; fi
           # Validation: SENTRY_DSN must be empty or URL; block legacy '1'
           if grep -q '^SENTRY_DSN=1$' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; fi
           # Expose PROJECT_NAME to subsequent steps
           echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2 | tr -d '\r')" >> $GITHUB_ENV
+          # Debug echo to confirm consolidation
+          echo "=== Effective .env (sanitized) ==="; sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/'
+          echo "Using PROJECT_NAME=$PROJECT_NAME"
           
       - name: Ensure FIRST_SUPERUSER_PASSWORD length <= 40
         run: |
@@ -56,44 +60,44 @@ jobs:
           fi
           
       - name: Build with Docker Compose
-        run: docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
+        run: docker compose --env-file .env -f docker-compose.yml -p "barrels-api" build
           
       - name: Deploy with Docker Compose
         run: |
           # Start database first
           echo "Starting database..."
-          docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d db
+          docker compose --env-file .env -f docker-compose.yml -p "barrels-api" up -d db
           # Wait for database to be ready
           echo "Waiting for database to be ready..."
           for i in {1..20}; do
-            status=$(docker inspect --format='{{json .State.Health.Status}}' "${{ env.PROJECT_NAME }}-db-1" 2>/dev/null || echo null)
+            status=$(docker inspect --format='{{json .State.Health.Status}}' "barrels-api-db-1" 2>/dev/null || echo null)
             if echo "$status" | grep -q healthy; then echo "Database is ready"; break; fi
             echo "Waiting for database to be ready... ($i/20)"; sleep 3
             if [ $i -eq 20 ]; then
-              echo "::error::Database did not become ready in time"; docker compose -p "${{ env.PROJECT_NAME }}" logs db; exit 1;
+              echo "::error::Database did not become ready in time"; docker compose -p "barrels-api" logs db; exit 1;
             fi
           done
           # Start remaining services
           echo "Starting all services..."
-          docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
+          docker compose --env-file .env -f docker-compose.yml -p "barrels-api" up -d --remove-orphans
           # Show service status
-          echo "=== Service status ==="; docker compose -p "${{ env.PROJECT_NAME }}" ps
+          echo "=== Service status ==="; docker compose -p "barrels-api" ps
           
           # Show logs for debugging
           echo -e "\n=== Prestart logs ==="
-          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" logs prestart --tail=50 2>&1 || echo "No prestart logs available"
+          docker compose --env-file .env -p "barrels-api" logs prestart --tail=50 2>&1 || echo "No prestart logs available"
           
           echo -e "\n=== Backend logs ==="
-          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" logs backend --tail=20 2>&1 || echo "No backend logs available"
+          docker compose --env-file .env -p "barrels-api" logs backend --tail=20 2>&1 || echo "No backend logs available"
           
           echo -e "\n=== Traefik logs ==="
-          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
+          docker compose --env-file .env -p "barrels-api" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
 
       - name: Show logs on failure
         if: failure()
         run: |
           echo "=== docker ps ===" && docker ps -a || true
-          echo "=== prestart logs ===" && docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
-          echo "=== db logs ===" && docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
-          echo "=== backend logs ===" && docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 backend || true
+          echo "=== prestart logs ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 prestart || true
+          echo "=== db logs ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 db || true
+          echo "=== backend logs ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 backend || true
           echo "=== env (sanitized) ===" && sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
