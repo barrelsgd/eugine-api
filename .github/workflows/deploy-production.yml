@@ -68,40 +68,67 @@ jobs:
           
       - name: Deploy with Docker Compose
         run: |
-          # Start database first
+          set -euo pipefail
           echo "Starting database..."
           docker compose --env-file .env -f docker-compose.yml -p "barrels-api" up -d db
-          # Wait for database to be ready
           echo "Waiting for database to be ready..."
           for i in {1..20}; do
             status=$(docker inspect --format='{{json .State.Health.Status}}' "barrels-api-db-1" 2>/dev/null || echo null)
             if echo "$status" | grep -q healthy; then echo "Database is ready"; break; fi
             echo "Waiting for database to be ready... ($i/20)"; sleep 3
             if [ $i -eq 20 ]; then
-              echo "::error::Database did not become ready in time"; docker compose -p "barrels-api" logs db; exit 1;
+              echo "::error::Database did not become ready in time";
+              docker compose -p "barrels-api" logs db || true
+              exit 1
             fi
           done
-          # Start remaining services
+
           echo "Starting all services..."
+          set +e
           docker compose --env-file .env -f docker-compose.yml -p "barrels-api" up -d --remove-orphans
-          # Show service status
-          echo "=== Service status ==="; docker compose -p "barrels-api" ps
-          
-          # Show logs for debugging
-          echo -e "\n=== Prestart logs ==="
-          docker compose --env-file .env -p "barrels-api" logs prestart --tail=50 2>&1 || echo "No prestart logs available"
-          
-          echo -e "\n=== Backend logs ==="
-          docker compose --env-file .env -p "barrels-api" logs backend --tail=20 2>&1 || echo "No backend logs available"
-          
-          echo -e "\n=== Traefik logs ==="
-          docker compose --env-file .env -p "barrels-api" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
+          up_status=$?
+          echo "=== Service status ==="; docker compose -p "barrels-api" ps || true
+
+          echo -e "\n=== Prestart logs (tail 120) ==="
+          docker compose --env-file .env -p "barrels-api" logs prestart --tail=120 2>&1 || true
+
+          echo -e "\n=== Backend logs (tail 120) ==="
+          docker compose --env-file .env -p "barrels-api" logs backend --tail=120 2>&1 || true
+
+          echo -e "\n=== DB logs (tail 60) ==="
+          docker compose --env-file .env -p "barrels-api" logs db --tail=60 2>&1 || true
+
+          echo -e "\n=== Traefik logs (tail 60) ==="
+          docker compose --env-file .env -p "barrels-api" logs traefik --tail=60 2>&1 || true
+
+          echo -e "\n=== Effective .env (sanitized) ==="
+          sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
+
+          if [ $up_status -ne 0 ]; then
+            echo "::error::docker compose up failed with status $up_status";
+            exit $up_status
+          fi
+
+          # Quick external health check; do not fail the job, just print result
+          set -e
+          echo -e "\n=== External health check ==="
+          curl -sS https://api.barrels.gd/api/v1/utils/health-check/ || echo "health-check request failed"
 
       - name: Show logs on failure
         if: failure()
         run: |
           echo "=== docker ps ===" && docker ps -a || true
-          echo "=== prestart logs ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 prestart || true
-          echo "=== db logs ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 db || true
-          echo "=== backend logs ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 backend || true
+          echo "=== compose ps (barrels-api) ===" && docker compose -p "barrels-api" ps || true
+          PRESTART_ID=$(docker compose -p "barrels-api" ps -q prestart || true)
+          BACKEND_ID=$(docker compose -p "barrels-api" ps -q backend || true)
+          DB_ID=$(docker compose -p "barrels-api" ps -q db || true)
+          echo "Prestart container: ${PRESTART_ID:-none}"; echo "Backend container: ${BACKEND_ID:-none}"; echo "DB container: ${DB_ID:-none}"
+          if [ -n "$PRESTART_ID" ]; then
+            echo "=== prestart inspect ==="; docker inspect "$PRESTART_ID" --format 'ExitCode={{.State.ExitCode}} StartedAt={{.State.StartedAt}} FinishedAt={{.State.FinishedAt}} Error={{.State.Error}}' || true
+          fi
+          echo "=== prestart logs (tail 400) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=400 prestart || true
+          echo "=== prestart suspected errors ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color prestart | egrep -i "(pydantic|validation|sentry|dsn|password|FIRST_SUPERUSER|alembic|traceback|exception)" || true
+          echo "=== db logs (tail 200) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 db || true
+          echo "=== backend logs (tail 200) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 backend || true
           echo "=== env (sanitized) ===" && sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
+          echo "=== health check (best effort) ==="; curl -sS https://api.barrels.gd/api/v1/utils/health-check/ || true
