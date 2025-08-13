@@ -105,7 +105,7 @@ jobs:
           echo -e "\n=== External health check ==="
           curl -sS https://api.barrels.gd/api/v1/utils/health-check/ || echo "health-check request failed"
 
-      - name: Guard: ensure barrels-api (not eugine-api)
+      - name: "Guard: ensure barrels-api (not eugine-api)"
         run: |
           set -euxo pipefail
           echo "Checking for unintended eugine-api containers..."
