@@ -50,9 +50,16 @@ jobs:
             gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
             for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
               if ! grep -q "^${v}=" "$ENV_FILE"; then echo "${v}=$(gen_secret)" >> "$ENV_FILE"; continue; fi
-              if grep -q "^${v}=changethis$" "$ENV_FILE"; then
-                # Replace exact insecure default line
-                awk -v k="$v" -v val="$(gen_secret)" 'BEGIN{FS=OFS="="} $1==k && $2=="changethis"{$2=val} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+              # Replace insecure defaults whether quoted or unquoted
+              if grep -Eq "^${v}=(\"?changethis\"?)$" "$ENV_FILE"; then
+                awk -v k="$v" -v val="$(gen_secret)" '
+                  BEGIN{FS=OFS="="}
+                  $1==k {
+                    # normalize and replace only if value equals changethis (optionally quoted)
+                    gsub(/^\"?changethis\"?$/, val, $2)
+                  }
+                  {print}
+                ' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
               fi
             done
 
