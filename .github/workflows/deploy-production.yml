@@ -5,7 +5,81 @@ on:
     types: [published]
 
 jobs:
+  verify_checks:
+    name: Verify checks for release commit
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      contents: read
+    steps:
+      - name: Verify all required checks succeeded
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const release = context.payload.release;
+            const tag = release.tag_name; // e.g. v1.2.3
+            const target = release.target_commitish; // branch name or SHA
+
+            async function resolveCommitSha() {
+              // Prefer the tag if it exists
+              if (tag) {
+                try {
+                  const ref = await github.rest.git.getRef({ owner, repo, ref: `tags/${tag}` });
+                  let sha = ref.data.object.sha;
+                  // If it's an annotated tag, peel to commit
+                  if (ref.data.object.type === 'tag') {
+                    const tagObj = await github.rest.git.getTag({ owner, repo, tag_sha: sha });
+                    sha = tagObj.data.object.sha;
+                  }
+                  core.info(`Resolved commit via tag ${tag}: ${sha}`);
+                  return sha;
+                } catch (e) {
+                  core.warning(`Failed to resolve tag ${tag}: ${e.message}`);
+                }
+              }
+              // Fallback to target_commitish (branch or SHA)
+              if (/^[0-9a-f]{40}$/i.test(target || '')) {
+                core.info(`Using provided commit SHA: ${target}`);
+                return target;
+              }
+              if (target) {
+                try {
+                  const ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${target}` });
+                  const sha = ref.data.object.sha;
+                  core.info(`Resolved commit via branch ${target}: ${sha}`);
+                  return sha;
+                } catch (e) {
+                  core.warning(`Failed to resolve branch ${target}: ${e.message}`);
+                }
+              }
+              throw new Error('Could not resolve commit SHA for this release');
+            }
+
+            const sha = await resolveCommitSha();
+            const checksResp = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
+            const runs = checksResp.data.check_runs || [];
+            core.info(`Found ${runs.length} check runs on ${sha}`);
+
+            if (runs.length === 0) {
+              core.setFailed('No check runs found on the release commit; refusing to deploy.');
+              return;
+            }
+
+            const bad = runs.filter(r => r.status !== 'completed' || !['success', 'skipped'].includes((r.conclusion || '').toLowerCase()));
+            if (bad.length) {
+              core.startGroup('Failing or incomplete checks');
+              for (const r of bad) {
+                core.error(`${r.name}: status=${r.status} conclusion=${r.conclusion}`);
+              }
+              core.endGroup();
+              core.setFailed('Some checks are failing or not completed. Blocked deploy.');
+              return;
+            }
+            core.notice('All checks succeeded (or were skipped). Proceeding to deploy.');
   deploy:
+    needs: verify_checks
     runs-on: self-hosted
     steps:
       - name: Checkout
