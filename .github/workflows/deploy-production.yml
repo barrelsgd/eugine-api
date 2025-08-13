@@ -58,26 +58,48 @@ jobs:
             }
 
             const sha = await resolveCommitSha();
-            const checksResp = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
-            const runs = checksResp.data.check_runs || [];
-            core.info(`Found ${runs.length} check runs on ${sha}`);
 
-            if (runs.length === 0) {
-              core.setFailed('No check runs found on the release commit; refusing to deploy.');
-              return;
+            // Helper to fetch and filter check runs (ignore this gating job itself)
+            async function fetchFilteredRuns() {
+              const resp = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
+              const all = resp.data.check_runs || [];
+              const filtered = all.filter(r => (r.name || '').toLowerCase() !== 'verify checks for release commit');
+              return filtered;
             }
 
-            const bad = runs.filter(r => r.status !== 'completed' || !['success', 'skipped'].includes((r.conclusion || '').toLowerCase()));
-            if (bad.length) {
-              core.startGroup('Failing or incomplete checks');
-              for (const r of bad) {
-                core.error(`${r.name}: status=${r.status} conclusion=${r.conclusion}`);
+            // Poll until all relevant checks are completed (max ~30 minutes)
+            const maxAttempts = 60; // 60 * 30s = 30 minutes
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const runs = await fetchFilteredRuns();
+              core.info(`Found ${runs.length} check runs on ${sha}`);
+              if (runs.length === 0) {
+                core.setFailed('No check runs found on the release commit (after filtering); refusing to deploy.');
+                return;
               }
-              core.endGroup();
-              core.setFailed('Some checks are failing or not completed. Blocked deploy.');
-              return;
+
+              const inProgress = runs.filter(r => r.status !== 'completed');
+              if (inProgress.length === 0) {
+                core.info('All relevant checks completed. Evaluating results...');
+                // Evaluate results
+                const bad = runs.filter(r => !['success', 'skipped'].includes((r.conclusion || '').toLowerCase()));
+                if (bad.length) {
+                  core.startGroup('Failing checks');
+                  for (const r of bad) {
+                    core.error(`${r.name}: status=${r.status} conclusion=${r.conclusion}`);
+                  }
+                  core.endGroup();
+                  core.setFailed('Some checks failed. Blocked deploy.');
+                  return;
+                }
+                core.notice('All checks succeeded (or were skipped). Proceeding to deploy.');
+                return;
+              }
+
+              core.info(`Waiting for ${inProgress.length} checks to complete (attempt ${attempt}/${maxAttempts})...`);
+              await new Promise(res => setTimeout(res, 30000)); // 30s
             }
-            core.notice('All checks succeeded (or were skipped). Proceeding to deploy.');
+
+            core.setFailed('Timeout waiting for checks to complete (30 minutes).');
   deploy:
     needs: verify_checks
     runs-on: self-hosted
