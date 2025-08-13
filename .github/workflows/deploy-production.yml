@@ -56,13 +56,13 @@ jobs:
           fi
           
       - name: Build with Docker Compose
-        run: docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
+        run: docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
           
       - name: Deploy with Docker Compose
         run: |
           # Start database first
           echo "Starting database..."
-          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d db
+          docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d db
           # Wait for database to be ready
           echo "Waiting for database to be ready..."
           for i in {1..20}; do
@@ -75,25 +75,25 @@ jobs:
           done
           # Start remaining services
           echo "Starting all services..."
-          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
+          docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
           # Show service status
           echo "=== Service status ==="; docker compose -p "${{ env.PROJECT_NAME }}" ps
           
           # Show logs for debugging
           echo -e "\n=== Prestart logs ==="
-          docker compose -p "${{ env.PROJECT_NAME }}" logs prestart --tail=50 2>&1 || echo "No prestart logs available"
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" logs prestart --tail=50 2>&1 || echo "No prestart logs available"
           
           echo -e "\n=== Backend logs ==="
-          docker compose -p "${{ env.PROJECT_NAME }}" logs backend --tail=20 2>&1 || echo "No backend logs available"
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" logs backend --tail=20 2>&1 || echo "No backend logs available"
           
           echo -e "\n=== Traefik logs ==="
-          docker compose -p "${{ env.PROJECT_NAME }}" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
 
       - name: Show logs on failure
         if: failure()
         run: |
           echo "=== docker ps ===" && docker ps -a || true
-          echo "=== prestart logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
-          echo "=== db logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
-          echo "=== backend logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 backend || true
+          echo "=== prestart logs ===" && docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
+          echo "=== db logs ===" && docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
+          echo "=== backend logs ===" && docker compose --env-file .env -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 backend || true
           echo "=== env (sanitized) ===" && sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
