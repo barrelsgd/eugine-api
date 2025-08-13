@@ -50,13 +50,24 @@ jobs:
 
             # Generate strong secrets on first provision (always replace example values)
             gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
-            for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
-              # Remove any existing line for the key (from template)
-              grep -v -E "^${v}=" "$ENV_FILE" > "$ENV_FILE.tmp" || true
-              mv "$ENV_FILE.tmp" "$ENV_FILE"
-              # Append fresh strong secret
+            # Determine project name for volume detection
+            proj=$(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r' || true)
+            if [ -z "$proj" ]; then proj=barrels-api-staging; fi
+            vol_name="${proj}_app-db-data"
+            has_db_vol=0
+            if docker volume ls -q | grep -q "^${vol_name}$"; then has_db_vol=1; fi
+
+            for v in SECRET_KEY FIRST_SUPERUSER_PASSWORD; do
+              grep -v -E "^${v}=" "$ENV_FILE" > "$ENV_FILE.tmp" || true && mv "$ENV_FILE.tmp" "$ENV_FILE"
               echo "${v}=$(gen_secret)" >> "$ENV_FILE"
             done
+            # Only set POSTGRES_PASSWORD if DB volume does not yet exist
+            if [ "$has_db_vol" -eq 0 ]; then
+              grep -v -E "^POSTGRES_PASSWORD=" "$ENV_FILE" > "$ENV_FILE.tmp" || true && mv "$ENV_FILE.tmp" "$ENV_FILE"
+              echo "POSTGRES_PASSWORD=$(gen_secret)" >> "$ENV_FILE"
+            else
+              echo "Detected existing DB volume ($vol_name); preserving existing POSTGRES_PASSWORD in $ENV_FILE"
+            fi
 
             # SENTRY_DSN must be empty or valid; clear '1' if present
             awk 'BEGIN{FS=OFS="="} $1=="SENTRY_DSN" && $2=="1"{$2=""} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -71,7 +82,8 @@ jobs:
           if [ -f "$ENV_FILE" ]; then
             gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
             changed=0
-            for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
+            # Do not mutate POSTGRES_PASSWORD here to avoid auth mismatch with existing DB volume
+            for v in SECRET_KEY FIRST_SUPERUSER_PASSWORD; do
               if grep -Eq "^${v}=(\"?changethis\"?)$" "$ENV_FILE"; then
                 echo "Hardening insecure default for $v"
                 awk -v k="$v" -v val="$(gen_secret)" 'BEGIN{FS=OFS="="} $1==k{$2=val} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -123,3 +135,12 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
+
+      - name: On failure: diagnostics (compose logs)
+        if: failure()
+        run: |
+          echo "=== docker ps ===" && docker ps -a || true
+          echo "=== prestart logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
+          echo "=== db logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
+          echo "=== backend logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 backend || true
+          echo "=== env (sanitized) ===" && sed -n '1,200p' "$ENV_FILE" | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
