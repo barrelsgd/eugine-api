@@ -31,8 +31,29 @@ jobs:
           if grep -q '^PROJECT_NAME=' .env; then sed -i "s/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api/" .env; else echo "PROJECT_NAME=barrels-api" >> .env; fi
           # Distinct logical DB name for production
           if grep -q '^POSTGRES_DB=' .env; then sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=app_prod/" .env; else echo "POSTGRES_DB=app_prod" >> .env; fi
+          # Validation: SENTRY_DSN must be empty or URL; block legacy '1'
+          if grep -q '^SENTRY_DSN=1$' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; fi
           # Expose PROJECT_NAME to subsequent steps
-          echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2)" >> $GITHUB_ENV
+          echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2 | tr -d '\r')" >> $GITHUB_ENV
+          
+      - name: Ensure FIRST_SUPERUSER_PASSWORD length <= 40
+        run: |
+          set -euo pipefail
+          cur=$(grep -E '^FIRST_SUPERUSER_PASSWORD=' .env | cut -d'=' -f2- | tr -d '\r' || true)
+          if [ -z "${cur:-}" ]; then
+            new=$(openssl rand -base64 48 | tr -d '=\n' | cut -c1-32)
+            sed -i "s/^FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=${new}/" .env
+            echo "Set FIRST_SUPERUSER_PASSWORD to random 32-char value"
+          else
+            len=${#cur}
+            if [ "$len" -gt 40 ]; then
+              new=$(echo "$cur" | cut -c1-40)
+              sed -i "s/^FIRST_SUPERUSER_PASSWORD=.*/FIRST_SUPERUSER_PASSWORD=${new}/" .env
+              echo "Truncated FIRST_SUPERUSER_PASSWORD from $len to 40 characters"
+            else
+              echo "FIRST_SUPERUSER_PASSWORD length OK ($len)"
+            fi
+          fi
           
       - name: Build with Docker Compose
         run: docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
@@ -42,30 +63,21 @@ jobs:
           # Start database first
           echo "Starting database..."
           docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d db
-          
           # Wait for database to be ready
           echo "Waiting for database to be ready..."
-          for i in {1..10}; do
-            if docker compose -p "${{ env.PROJECT_NAME }}" ps db --status running | grep -q "healthy"; then
-              echo "Database is ready"
-              break
-            fi
-            echo "Waiting for database to be ready... ($i/10)"
-            sleep 5
-            if [ $i -eq 10 ]; then
-              echo "::error::Database did not become ready in time"
-              docker compose -p "${{ env.PROJECT_NAME }}" logs db
-              exit 1
+          for i in {1..20}; do
+            status=$(docker inspect --format='{{json .State.Health.Status}}' "${{ env.PROJECT_NAME }}-db-1" 2>/dev/null || echo null)
+            if echo "$status" | grep -q healthy; then echo "Database is ready"; break; fi
+            echo "Waiting for database to be ready... ($i/20)"; sleep 3
+            if [ $i -eq 20 ]; then
+              echo "::error::Database did not become ready in time"; docker compose -p "${{ env.PROJECT_NAME }}" logs db; exit 1;
             fi
           done
-          
           # Start remaining services
           echo "Starting all services..."
           docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d --remove-orphans
-          
           # Show service status
-          echo "=== Service status ==="
-          docker compose -p "${{ env.PROJECT_NAME }}" ps
+          echo "=== Service status ==="; docker compose -p "${{ env.PROJECT_NAME }}" ps
           
           # Show logs for debugging
           echo -e "\n=== Prestart logs ==="
@@ -76,3 +88,12 @@ jobs:
           
           echo -e "\n=== Traefik logs ==="
           docker compose -p "${{ env.PROJECT_NAME }}" logs traefik --tail=20 2>&1 || echo "No Traefik logs available"
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "=== docker ps ===" && docker ps -a || true
+          echo "=== prestart logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
+          echo "=== db logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
+          echo "=== backend logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 backend || true
+          echo "=== env (sanitized) ===" && sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
