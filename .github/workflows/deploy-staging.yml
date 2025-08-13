@@ -14,40 +14,75 @@ jobs:
       - staging
     environment:
       name: staging
+    env:
+      ENV_FILE: /home/github/.config/eugine-api/staging.env  # stable path outside workspace
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          clean: false  # preserve untracked files (e.g., .env) on self-hosted runner workspace
-      
-      - name: Validate environment (read-only)
+          clean: false  # preserve any pre-existing workspace files if present
+
+      - name: Ensure external env exists (one-time provision)
         run: |
-          # Require pre-provisioned .env on the VM; do not create or modify it here
-          if [ ! -f .env ]; then
-            echo "ERROR: .env is missing on the runner. Create it once on the VM and re-run."; exit 1;
+          set -euo pipefail
+          mkdir -p "$(dirname "$ENV_FILE")"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "Provisioning $ENV_FILE from .env.example"
+            if [ ! -f .env.example ]; then echo "ERROR: .env.example is missing in the repository root"; exit 1; fi
+            cp .env.example "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+
+            # Enforce staging values
+            sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=staging/' "$ENV_FILE"
+            sed -i 's|^DOMAIN=.*|DOMAIN=staging.api.barrels.gd|' "$ENV_FILE"
+            sed -i 's|^FRONTEND_HOST=.*|FRONTEND_HOST=https://staging.api.barrels.gd|' "$ENV_FILE"
+            sed -i 's/^STACK_NAME=.*/STACK_NAME=barrels-api-staging/' "$ENV_FILE"
+            sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=app_staging/' "$ENV_FILE"
+            sed -i 's/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api-staging/' "$ENV_FILE"
+
+            # Generate strong secrets only if missing or using insecure defaults
+            gen_secret() { head -c 48 /dev/urandom | base64 | tr -d '\n' | cut -c1-64; }
+            for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
+              if ! grep -q "^${v}=" "$ENV_FILE"; then echo "${v}=$(gen_secret)" >> "$ENV_FILE"; continue; fi
+              if grep -q "^${v}=changethis$" "$ENV_FILE"; then
+                sed -i "s/^${v}=changethis$/${v}=$(gen_secret)/" "$ENV_FILE"
+              fi
+            done
+
+            # SENTRY_DSN must be empty or valid; clear '1' if present
+            if grep -q '^SENTRY_DSN=1$' "$ENV_FILE"; then sed -i 's/^SENTRY_DSN=1$/SENTRY_DSN=/' "$ENV_FILE"; fi
+          else
+            echo "Existing env found at $ENV_FILE; not modifying."
           fi
 
-          # Read-only validations (no sed/cp)
-          grep -q '^ENVIRONMENT=staging$' .env || { echo 'ERROR: ENVIRONMENT must be staging'; exit 1; }
-          grep -q '^DOMAIN=staging.api.barrels.gd$' .env || { echo 'ERROR: DOMAIN must be staging.api.barrels.gd'; exit 1; }
-          grep -q '^STACK_NAME=barrels-api-staging$' .env || { echo 'ERROR: STACK_NAME must be barrels-api-staging'; exit 1; }
-          grep -q '^FRONTEND_HOST=https://staging.api.barrels.gd$' .env || { echo 'ERROR: FRONTEND_HOST must be https://staging.api.barrels.gd'; exit 1; }
-          grep -q '^POSTGRES_DB=app_staging$' .env || { echo 'ERROR: POSTGRES_DB must be app_staging'; exit 1; }
+      - name: Validate environment (read-only)
+        run: |
+          # Require pre-provisioned env file outside the workspace; do not create or modify it here
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "ERROR: env file missing at $ENV_FILE. Create it once on the VM and re-run."; exit 1;
+          fi
+
+          # Read-only validations
+          grep -q '^ENVIRONMENT=staging$' "$ENV_FILE" || { echo 'ERROR: ENVIRONMENT must be staging'; exit 1; }
+          grep -q '^DOMAIN=staging.api.barrels.gd$' "$ENV_FILE" || { echo 'ERROR: DOMAIN must be staging.api.barrels.gd'; exit 1; }
+          grep -q '^STACK_NAME=barrels-api-staging$' "$ENV_FILE" || { echo 'ERROR: STACK_NAME must be barrels-api-staging'; exit 1; }
+          grep -q '^FRONTEND_HOST=https://staging.api.barrels.gd$' "$ENV_FILE" || { echo 'ERROR: FRONTEND_HOST must be https://staging.api.barrels.gd'; exit 1; }
+          grep -q '^POSTGRES_DB=app_staging$' "$ENV_FILE" || { echo 'ERROR: POSTGRES_DB must be app_staging'; exit 1; }
 
           # Security checks — fail if insecure defaults exist; do not auto-fix
           for v in SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD; do
-            if ! grep -q "^${v}=" .env; then echo "ERROR: ${v} missing in .env"; exit 1; fi
-            if grep -q "^${v}=changethis$" .env; then echo "ERROR: ${v} uses insecure default value"; exit 1; fi
+            if ! grep -q "^${v}=" "$ENV_FILE"; then echo "ERROR: ${v} missing in $ENV_FILE"; exit 1; fi
+            if grep -q "^${v}=changethis$" "$ENV_FILE"; then echo "ERROR: ${v} uses insecure default value"; exit 1; fi
           done
 
-          # SENTRY_DSN must be empty or valid; explicitly block '1' which caused past failures
-          if grep -q '^SENTRY_DSN=1$' .env; then echo 'ERROR: SENTRY_DSN must be empty or a valid DSN URL'; exit 1; fi
+          # SENTRY_DSN must be empty or valid; explicitly block '1'
+          if grep -q '^SENTRY_DSN=1$' "$ENV_FILE"; then echo 'ERROR: SENTRY_DSN must be empty or a valid DSN URL'; exit 1; fi
 
           # Expose PROJECT_NAME to subsequent steps (read-only)
-          echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2)" >> $GITHUB_ENV
-      
+          echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' \"$ENV_FILE\" | cut -d'=' -f2)" >> $GITHUB_ENV
+
       - name: Build with Docker Compose
-        run: docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
-          
+        run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
+
       - name: Deploy with Docker Compose
-        run: docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
+        run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
