@@ -64,11 +64,15 @@ jobs:
           docker compose -f docker-compose.yml -p eugine-api down || true
 
       - name: Build with Docker Compose
-        run: docker compose --env-file .env -f docker-compose.yml -p "barrels-api" build
+        run: |
+          set -euxo pipefail
+          echo "Using: docker compose --env-file .env -f docker-compose.yml -p 'barrels-api' build"
+          docker compose --env-file .env -f docker-compose.yml -p "barrels-api" build
           
       - name: Deploy with Docker Compose
         run: |
-          set -euo pipefail
+          set -euxo pipefail
+          echo "Using: docker compose --env-file .env -f docker-compose.yml -p 'barrels-api' up -d ..."
           echo "Starting database..."
           docker compose --env-file .env -f docker-compose.yml -p "barrels-api" up -d db
           echo "Waiting for database to be ready..."
@@ -113,6 +117,21 @@ jobs:
           set -e
           echo -e "\n=== External health check ==="
           curl -sS https://api.barrels.gd/api/v1/utils/health-check/ || echo "health-check request failed"
+
+      - name: Guard: ensure barrels-api (not eugine-api)
+        run: |
+          set -euxo pipefail
+          echo "Checking for unintended eugine-api containers..."
+          if docker compose -p eugine-api ps | grep -q "eugine-api-"; then
+            echo "::error::Detected eugine-api containers running; the workflow likely missed -p barrels-api in a step."
+            echo "=== compose ps (eugine-api) ==="
+            docker compose -p eugine-api ps || true
+            echo "Shutting down legacy stack to prevent drift..."
+            docker compose -f docker-compose.yml -p eugine-api down || true
+            exit 1
+          else
+            echo "OK: No eugine-api containers running."
+          fi
 
       - name: Show logs on failure
         if: failure()
