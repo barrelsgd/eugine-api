@@ -36,14 +36,14 @@ jobs:
             # Enforce staging values by stripping existing keys and appending desired ones
             tmp_file="$(mktemp)"
             grep -v -E '^(ENVIRONMENT|DOMAIN|FRONTEND_HOST|STACK_NAME|POSTGRES_DB|PROJECT_NAME)=' "$ENV_FILE" > "$tmp_file" || true
-            cat >> "$tmp_file" <<'EOF'
-ENVIRONMENT=staging
-DOMAIN=staging.api.barrels.gd
-FRONTEND_HOST=https://staging.api.barrels.gd
-STACK_NAME=barrels-api-staging
-POSTGRES_DB=app_staging
-PROJECT_NAME=barrels-api-staging
-EOF
+            printf '%s\n' \
+              'ENVIRONMENT=staging' \
+              'DOMAIN=staging.api.barrels.gd' \
+              'FRONTEND_HOST=https://staging.api.barrels.gd' \
+              'STACK_NAME=barrels-api-staging' \
+              'POSTGRES_DB=app_staging' \
+              'PROJECT_NAME=barrels-api-staging' \
+              >> "$tmp_file"
             mv "$tmp_file" "$ENV_FILE"
 
             # Generate strong secrets only if missing or using insecure defaults
