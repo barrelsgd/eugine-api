@@ -108,8 +108,15 @@ jobs:
           # SENTRY_DSN must be empty or valid; explicitly block '1'
           if grep -q '^SENTRY_DSN=1$' "$ENV_FILE"; then echo 'ERROR: SENTRY_DSN must be empty or a valid DSN URL'; exit 1; fi
 
-          # Expose PROJECT_NAME to subsequent steps (read-only)
-          echo "PROJECT_NAME=$(grep '^PROJECT_NAME=' \"$ENV_FILE\" | cut -d'=' -f2)" >> $GITHUB_ENV
+          # Expose PROJECT_NAME to subsequent steps (read-only) with a safe fallback
+          proj=$(grep '^PROJECT_NAME=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r' || true)
+          if [ -z "$proj" ]; then proj=barrels-api-staging; fi
+          echo "PROJECT_NAME=$proj" >> $GITHUB_ENV
+
+      - name: Link external env into workspace for Compose
+        run: |
+          # docker-compose services reference env_file: .env. Link external env for runtime.
+          ln -sf "$ENV_FILE" .env
 
       - name: Build with Docker Compose
         run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
