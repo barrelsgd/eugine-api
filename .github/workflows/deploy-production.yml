@@ -152,7 +152,7 @@ jobs:
           echo "=== Effective .env (sanitized) ==="; sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/'
           echo "Using PROJECT_NAME=$PROJECT_NAME"
 
-      - name: Guard: disallow default or empty secrets
+      - name: "Guard: disallow default or empty secrets"
         run: |
           set -euo pipefail
           bad=0
