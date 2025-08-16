@@ -152,7 +152,7 @@ jobs:
           echo "=== Effective .env (sanitized) ==="; sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/'
           echo "Using PROJECT_NAME=$PROJECT_NAME"
 
-      - name: "Guard: disallow default or empty secrets"
+      - name: Guard: disallow default or empty secrets
         run: |
           set -euo pipefail
           bad=0
@@ -182,7 +182,12 @@ jobs:
           
       - name: Retire legacy eugine-api stack (safety)
         run: |
+          # Try normal compose down
           docker compose -f docker-compose.yml -p eugine-api down || true
+          # Force remove any lingering containers (e.g., old frontend started elsewhere)
+          docker ps -aq --format '{{.Names}}' | grep -E '^eugine-api-' | xargs -r docker rm -f || true
+          # Remove legacy default network if it still exists
+          docker network rm eugine-api_default 2>/dev/null || true
 
       - name: Build with Docker Compose
         run: |
@@ -243,13 +248,23 @@ jobs:
         run: |
           set -euxo pipefail
           echo "Checking for unintended eugine-api containers..."
-          if docker compose -p eugine-api ps | grep -q "eugine-api-"; then
-            echo "::error::Detected eugine-api containers running; the workflow likely missed -p barrels-api in a step."
-            echo "=== compose ps (eugine-api) ==="
-            docker compose -p eugine-api ps || true
-            echo "Shutting down legacy stack to prevent drift..."
+          if docker ps --format '{{.Names}}' | grep -qE '^eugine-api-'; then
+            echo "::error::Detected eugine-api containers running; attempting cleanup..."
+            echo "=== compose ps (eugine-api) ==="; docker compose -p eugine-api ps || true
+            echo "Force removing legacy containers..."
+            docker ps -aq --format '{{.Names}}' | grep -E '^eugine-api-' | xargs -r docker rm -f || true
+            echo "Bringing down legacy compose project..."
             docker compose -f docker-compose.yml -p eugine-api down || true
-            exit 1
+            echo "Removing legacy network if exists..."
+            docker network rm eugine-api_default 2>/dev/null || true
+            echo "Re-checking..."
+            if docker ps --format '{{.Names}}' | grep -qE '^eugine-api-'; then
+              echo "::error::Legacy eugine-api containers still present after cleanup."
+              docker ps -a | grep -E '^eugine-api-' || true
+              exit 1
+            else
+              echo "Cleanup successful; continuing."
+            fi
           else
             echo "OK: No eugine-api containers running."
           fi
