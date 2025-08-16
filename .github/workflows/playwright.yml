@@ -1,22 +1,11 @@
-name: Playwright Tests
+name: Playwright Tests (disabled)
 
 on:
-  push:
-    branches:
-    - master
-  pull_request:
-    types:
-    - opened
-    - synchronize
   workflow_dispatch:
-    inputs:
-      debug_enabled:
-        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
-        required: false
-        default: 'false'
 
 jobs:
   changes:
+    if: false  # disabled: frontend removed
     runs-on: ubuntu-latest
     # Set job outputs to values from filter step
     outputs:
@@ -36,9 +25,9 @@ jobs:
             - .github/workflows/playwright.yml
 
   test-playwright:
+    if: false  # disabled: frontend removed
     needs:
       - changes
-    if: ${{ needs.changes.outputs.changed == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
@@ -178,11 +167,11 @@ jobs:
         retention-days: 1
 
   merge-playwright-reports:
+    if: false  # disabled: frontend removed
     needs:
       - test-playwright
       - changes
     # Merge reports after playwright-tests, even if some shards have failed
-    if: ${{ !cancelled() && needs.changes.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -209,15 +198,11 @@ jobs:
         retention-days: 30
         include-hidden-files: true
 
-  # https://github.com/marketplace/actions/alls-green#why
-  alls-green-playwright:  # This job does nothing and is only used for the branch protection
-    if: always()
+  alls-green-playwright:
+    if: false  # disabled: frontend removed
     needs:
       - test-playwright
     runs-on: ubuntu-latest
     steps:
-      - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@release/v1
-        with:
-          jobs: ${{ toJSON(needs) }}
-          allowed-skips: test-playwright
+      - name: Disabled
+        run: echo "Playwright workflow disabled for backend-only"

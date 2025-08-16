@@ -37,11 +37,10 @@ jobs:
 
             # Enforce staging values by stripping existing keys and appending desired ones
             tmp_file="$(mktemp)"
-            grep -v -E '^(ENVIRONMENT|DOMAIN|FRONTEND_HOST|STACK_NAME|POSTGRES_DB|PROJECT_NAME)=' "$ENV_FILE" > "$tmp_file" || true
+            grep -v -E '^(ENVIRONMENT|DOMAIN|STACK_NAME|POSTGRES_DB|PROJECT_NAME)=' "$ENV_FILE" > "$tmp_file" || true
             printf '%s\n' \
               'ENVIRONMENT=staging' \
               'DOMAIN=staging.api.barrels.gd' \
-              'FRONTEND_HOST=https://staging.api.barrels.gd' \
               'STACK_NAME=barrels-api-staging' \
               'POSTGRES_DB=app_staging' \
               'PROJECT_NAME=barrels-api-staging' \
@@ -108,7 +107,6 @@ jobs:
           grep -q '^ENVIRONMENT=staging$' "$ENV_FILE" || { echo 'ERROR: ENVIRONMENT must be staging'; exit 1; }
           grep -q '^DOMAIN=staging.api.barrels.gd$' "$ENV_FILE" || { echo 'ERROR: DOMAIN must be staging.api.barrels.gd'; exit 1; }
           grep -q '^STACK_NAME=barrels-api-staging$' "$ENV_FILE" || { echo 'ERROR: STACK_NAME must be barrels-api-staging'; exit 1; }
-          grep -q '^FRONTEND_HOST=https://staging.api.barrels.gd$' "$ENV_FILE" || { echo 'ERROR: FRONTEND_HOST must be https://staging.api.barrels.gd'; exit 1; }
           grep -q '^POSTGRES_DB=app_staging$' "$ENV_FILE" || { echo 'ERROR: POSTGRES_DB must be app_staging'; exit 1; }
 
           # Security checks — fail if insecure defaults exist; do not auto-fix

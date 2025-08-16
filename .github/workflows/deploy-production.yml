@@ -117,8 +117,6 @@ jobs:
           sed -i "s/^DOMAIN=.*/DOMAIN=api.barrels.gd/" .env
           if grep -q '^STACK_NAME=' .env; then sed -i "s/^STACK_NAME=.*/STACK_NAME=barrels-api/" .env; else echo "STACK_NAME=barrels-api" >> .env; fi
           if grep -q '^PROJECT_NAME=' .env; then sed -i "s/^PROJECT_NAME=.*/PROJECT_NAME=barrels-api/" .env; else echo "PROJECT_NAME=barrels-api" >> .env; fi
-          # FRONTEND public origin for emails and links
-          if grep -q '^FRONTEND_HOST=' .env; then sed -i "s|^FRONTEND_HOST=.*|FRONTEND_HOST=https://api.barrels.gd|" .env; else echo "FRONTEND_HOST=https://api.barrels.gd" >> .env; fi
           # Distinct logical DB name for production (optional)
           if grep -q '^POSTGRES_DB=' .env; then sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=app_prod/" .env; else echo "POSTGRES_DB=app_prod" >> .env; fi
           # SENTRY must be empty unless valid DSN; force empty to avoid legacy '1'
