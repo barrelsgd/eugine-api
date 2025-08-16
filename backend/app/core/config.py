@@ -46,8 +46,11 @@ class Settings(BaseSettings):
     @property
     def all_cors_origins(self) -> list[str]:
         base = [str(origin).rstrip("/") for origin in self.BACKEND_CORS_ORIGINS]
-        return base + ([self.FRONTEND_HOST.rstrip("/")]
-                       if isinstance(self.FRONTEND_HOST, str) and self.FRONTEND_HOST else [])
+        return base + (
+            [self.FRONTEND_HOST.rstrip("/")]
+            if isinstance(self.FRONTEND_HOST, str) and self.FRONTEND_HOST
+            else []
+        )
 
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None
