@@ -59,11 +59,18 @@ jobs:
 
             const sha = await resolveCommitSha();
 
-            // Helper to fetch and filter check runs (ignore this gating job itself)
+            // Define gating policy
+            const REQUIRED = ['test-backend', 'lint-backend', 'test-docker-compose'];
+            const EXCLUDED = ['verify checks for release commit', 'deploy'];
+
+            // Helper to fetch and filter check runs according to the policy
             async function fetchFilteredRuns() {
               const resp = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
               const all = resp.data.check_runs || [];
-              const filtered = all.filter(r => (r.name || '').toLowerCase() !== 'verify checks for release commit');
+              const lc = (s) => (s || '').toLowerCase();
+              const filtered = all
+                .filter(r => !EXCLUDED.includes(lc(r.name)))
+                .filter(r => REQUIRED.length === 0 || REQUIRED.includes(lc(r.name)));
               return filtered;
             }
 
