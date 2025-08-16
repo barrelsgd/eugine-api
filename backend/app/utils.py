@@ -40,13 +40,32 @@ def send_email(
     # Debug logging for email send
     logger.info(f"[EMAIL_DEBUG] Sending email to: {email_to}")
     logger.info(f"[EMAIL_DEBUG] Subject: {subject}")
-    logger.info(f"[EMAIL_DEBUG] SMTP_HOST: {settings.SMTP_HOST}")
-    logger.info(f"[EMAIL_DEBUG] SMTP_PORT: {settings.SMTP_PORT}")
-    logger.info(f"[EMAIL_DEBUG] SMTP_TLS: {settings.SMTP_TLS}")
-    logger.info(f"[EMAIL_DEBUG] SMTP_SSL: {settings.SMTP_SSL}")
+    logger.info(f"[EMAIL_DEBUG] Provider: {'resend' if settings.RESEND_API_KEY else 'smtp'}")
     logger.info(f"[EMAIL_DEBUG] EMAILS_FROM_EMAIL: {settings.EMAILS_FROM_EMAIL}")
     logger.info(f"[EMAIL_DEBUG] HTML content length: {len(html_content)}")
 
+    # Prefer Resend if configured
+    if settings.RESEND_API_KEY:
+        try:
+            import resend  # lazy import
+
+            resend.api_key = settings.RESEND_API_KEY  # type: ignore[assignment]
+
+            params: resend.Emails.SendParams = {  # type: ignore[name-defined]
+                "from": f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>",
+                "to": [email_to],
+                "subject": subject,
+                "html": html_content,
+            }
+            logger.info("[EMAIL_DEBUG] Sending via Resend API")
+            result = resend.Emails.send(params)  # type: ignore[attr-defined]
+            logger.info(f"[EMAIL_DEBUG] Resend send result: {result}")
+            return
+        except Exception as e:  # pragma: no cover - log and fallback
+            logger.error(f"[EMAIL_DEBUG] Resend send failed, falling back to SMTP: {e}")
+            # Continue to SMTP fallback below
+
+    # SMTP fallback (MailCatcher/local or real SMTP)
     # Use standard smtplib instead of emails library
     import smtplib
     from email.mime.multipart import MIMEMultipart
