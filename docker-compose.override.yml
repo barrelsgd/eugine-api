@@ -53,36 +53,49 @@ services:
   adminer:
     restart: "no"
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - traefik-public
 
-  backend:
+  api:
     restart: "no"
     ports:
-      - "8000:8000"
+      - "8000:80"
     build:
-      context: ./backend
+      context: .
     command:
+      - uv
+      - run
       - uvicorn
-      - app.main:app
+      - src.main:app
       - --host
       - 0.0.0.0
       - --port
-      - "8000"
+      - "80"
       - --reload
     develop:
       watch:
-        - path: ./backend
+        - path: ./src
           action: sync
-          target: /app
-          ignore:
-            - ./backend/.venv
-            - .venv
-        - path: ./backend/pyproject.toml
+          target: /app/src
+        - path: ./alembic
+          action: sync
+          target: /app/alembic
+        - path: ./templates
+          action: sync
+          target: /app/templates
+        - path: ./scripts
+          action: sync
+          target: /app/scripts
+        - path: ./pyproject.toml
           action: rebuild
     volumes:
-      - ./backend/htmlcov:/app/htmlcov
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./templates:/app/templates
+      - ./scripts:/app/scripts
+      - ./alembic.ini:/app/alembic.ini
+      - ./pyproject.toml:/app/pyproject.toml
     environment:
       SMTP_HOST: "mailcatcher"
       SMTP_PORT: "1025"
