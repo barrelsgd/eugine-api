@@ -1,12 +1,12 @@
-# Production Docker Compose Configuration
-# For deployment on servers with Traefik reverse proxy
+# Staging Docker Compose Configuration
+# For deployment on staging servers with Traefik reverse proxy
 
 services:
   db:
     image: postgres:17
     restart: always
     volumes:
-      - app-db-data:/var/lib/postgresql/data
+      - app-db-data-staging:/var/lib/postgresql/data
     environment:
       - POSTGRES_SERVER=${POSTGRES_SERVER:-db}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
@@ -22,7 +22,7 @@ services:
       - default
 
   prestart:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}:${TAG:-latest}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}:${TAG:-staging}
     restart: "no"
     depends_on:
       db:
@@ -42,7 +42,7 @@ services:
       - default
 
   api:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}:${TAG:-latest}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}:${TAG:-staging}
     restart: always
     depends_on:
       db:
@@ -50,7 +50,7 @@ services:
       prestart:
         condition: service_completed_successfully
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - ENVIRONMENT=${ENVIRONMENT:-staging}
       - DOMAIN=${DOMAIN}
       - FRONTEND_HOST=${FRONTEND_HOST}
       - SECRET_KEY=${SECRET_KEY?Variable not set}
@@ -85,18 +85,18 @@ services:
       - traefik.constraint-label=traefik-public
 
       # HTTP Router
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.entrypoints=http
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.middlewares=https-redirect
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-http.rule=Host(`staging.api.${DOMAIN}`)
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-http.middlewares=https-redirect
 
       # HTTPS Router
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.entrypoints=https
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.tls=true
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-https.rule=Host(`staging.api.${DOMAIN}`)
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-https.tls=true
+      - traefik.http.routers.${STACK_NAME:-fast-back}-staging-api-https.tls.certresolver=le
 
       # Service
-      - traefik.http.services.${STACK_NAME:-fast-back}-api.loadbalancer.server.port=8000
+      - traefik.http.services.${STACK_NAME:-fast-back}-staging-api.loadbalancer.server.port=8000
 
       # HTTPS Redirect Middleware
       - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
@@ -106,11 +106,10 @@ services:
       - default
 
 volumes:
-  app-db-data:
+  app-db-data-staging:
 
 networks:
   traefik-public:
     external: true
   default:
     driver: bridge
-
