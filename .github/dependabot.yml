@@ -9,23 +9,14 @@ updates:
       prefix: ⬆
   # Python uv
   - package-ecosystem: uv
-    directory: /backend
-    schedule:
-      interval: daily
-    commit-message:
-      prefix: ⬆
-  # npm
-  - package-ecosystem: npm
-    directory: /frontend
+    directory: /
     schedule:
       interval: daily
     commit-message:
       prefix: ⬆
   # Docker
   - package-ecosystem: docker
-    directories:
-      - /backend
-      - /frontend
+    directory: /
     schedule:
       interval: weekly
     commit-message:

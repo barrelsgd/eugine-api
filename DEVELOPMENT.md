@@ -23,7 +23,7 @@ Once running, access these URLs:
 - **Backend API**: http://localhost:8000
 - **API Documentation (Swagger)**: http://localhost:8000/docs
 - **API Documentation (ReDoc)**: http://localhost:8000/redoc
-- **Adminer (Database UI)**: http://localhost:8081
+- **Adminer (Database UI)**: http://localhost:8080
 - **MailCatcher (Email Testing)**: http://localhost:1080
 - **Traefik Dashboard**: http://localhost:8090
 
@@ -83,7 +83,7 @@ docker compose logs -f api
 ### Database Management
 
 Access database via Adminer:
-- URL: http://localhost:8081
+- URL: http://localhost:8080
 - System: PostgreSQL
 - Server: db
 - Username: From `POSTGRES_USER` in `.env`

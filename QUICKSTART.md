@@ -28,15 +28,6 @@ docker compose watch
 
 ## 📝 Common Commands
 
-### Windows (PowerShell)
-```powershell
-.\scripts\dev.ps1 start        # Start with watch
-.\scripts\dev.ps1 logs-api     # View logs
-.\scripts\dev.ps1 shell        # Open shell
-.\scripts\dev.ps1 migrate      # Run migrations
-.\scripts\dev.ps1 test         # Run tests
-```
-
 ### Linux/Mac (Bash)
 ```bash
 ./scripts/dev.sh start         # Start with watch
@@ -44,6 +35,22 @@ docker compose watch
 ./scripts/dev.sh shell         # Open shell
 ./scripts/dev.sh migrate       # Run migrations
 ./scripts/dev.sh test          # Run tests
+```
+
+### Database Management
+```bash
+./scripts/db.sh shell          # Open PostgreSQL shell
+./scripts/db.sh backup         # Create backup
+./scripts/db.sh migrate        # Apply migrations
+./scripts/db.sh migration "msg" # Create new migration
+./scripts/db.sh seed           # Add test data
+```
+
+### Code Quality
+```bash
+./scripts/format.sh            # Format code
+./scripts/lint.sh              # Check quality
+./scripts/test.sh              # Run tests with coverage
 ```
 
 ## 🔄 Development Workflow
@@ -104,11 +111,14 @@ docker compose watch
 
 ## 📖 More Information
 
-- **Detailed Guide**: [DEVELOPMENT.md](DEVELOPMENT.md)
-- **Full README**: [README.md](README.md)
+- **Complete Guide**: [PROJECT_GUIDE.md](PROJECT_GUIDE.md)
+- **Development**: [DEVELOPMENT.md](DEVELOPMENT.md)
+- **Deployment**: [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Testing**: [TESTING.md](TESTING.md)
+- **Scripts**: [scripts/README.md](scripts/README.md)
 - **Best Practices**: https://github.com/zhanymkanov/fastapi-best-practices
 - **Template Reference**: https://github.com/fastapi/full-stack-fastapi-template
 
 ---
 
-**Need help?** Check [DEVELOPMENT.md](DEVELOPMENT.md) for detailed instructions.
+**Need help?** Check [PROJECT_GUIDE.md](PROJECT_GUIDE.md) for the complete reference.

@@ -1,25 +1,36 @@
+# GitHub Labeler Configuration
+# Automatically applies labels to PRs based on changed files
+
 docs:
-  - all:
-    - changed-files:
-      - any-glob-to-any-file:
-        - '**/*.md'
-      - all-globs-to-all-files:
-        - '!frontend/**'
-        - '!backend/**'
-        - '!.github/**'
-        - '!scripts/**'
-        - '!.gitignore'
-        - '!.pre-commit-config.yaml'
+  - changed-files:
+    - '**/*.md'
+    - '!scripts/**'
+    - '!.github/**'
 
 internal:
-  - all:
-    - changed-files:
-      - any-glob-to-any-file:
-        - .github/**
-        - scripts/**
-        - .gitignore
-        - .pre-commit-config.yaml
-      - all-globs-to-all-files:
-        - '!./**/*.md'
-        - '!frontend/**'
-        - '!backend/**'
+  - changed-files:
+    - '.github/**'
+    - 'scripts/**'
+    - '.gitignore'
+    - '.pre-commit-config.yaml'
+
+backend:
+  - changed-files:
+    - 'src/**'
+    - 'alembic/**'
+    - 'pyproject.toml'
+    - 'uv.lock'
+    - 'Dockerfile*'
+    - 'docker-compose*.yml'
+
+tests:
+  - changed-files:
+    - 'tests/**'
+    - '**/*test*.py'
+    - '**/*_test.py'
+
+dependencies:
+  - changed-files:
+    - 'pyproject.toml'
+    - 'uv.lock'
+    - 'requirements*.txt'

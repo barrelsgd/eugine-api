@@ -119,47 +119,75 @@ docker compose exec api uv run pytest --cov=src --cov-report=html
 fast-back/
 ├── src/                          # Application code
 │   ├── auth/                     # Authentication module
-│   │   ├── router.py            # Auth endpoints
-│   │   ├── schemas.py           # Pydantic models
-│   │   ├── models.py            # Database models
-│   │   ├── service.py           # Business logic
-│   │   ├── dependencies.py      # Route dependencies
-│   │   └── utils.py             # Helper functions
-│   ├── items/                    # Items module (example)
-│   ├── config.py                # Global configuration
-│   ├── database.py              # Database connection
-│   ├── models.py                # Global models
-│   ├── exceptions.py            # Global exceptions
-│   └── main.py                  # FastAPI app entry
-├── alembic/                      # Database migrations
-├── templates/                    # Email templates
-├── scripts/                      # Utility scripts
-│   ├── dev.ps1                  # Windows helper
-│   └── dev.sh                   # Linux/Mac helper
+│   │   ├── routers/              # Split auth routers
+│   │   │   ├── login.py          # Login endpoints
+│   │   │   ├── users.py          # User management
+│   │   │   ├── roles.py          # Role management
+│   │   │   └── permissions.py    # Permission management
+│   │   ├── constants.py          # Auth messages
+│   │   ├── models.py             # User, Role, Permission models
+│   │   ├── schemas.py            # Pydantic schemas
+│   │   ├── service.py            # Business logic
+│   │   └── dependencies.py       # Auth dependencies
+│   ├── items/                    # Items module
+│   │   ├── constants.py          # Item messages
+│   │   ├── models.py             # Item model
+│   │   ├── schemas.py            # Item schemas
+│   │   ├── service.py            # Item business logic
+│   │   └── router.py             # Item endpoints
+│   ├── utils/                    # Utilities
+│   │   └── router.py             # Health check, test email
+│   ├── config.py                 # Settings (Pydantic)
+│   ├── database.py               # DB connection, naming conventions
+│   ├── dependencies.py           # Global dependencies
+│   ├── email.py                  # Email functionality
+│   ├── main.py                   # FastAPI app
+│   └── pagination.py             # Pagination helpers
 ├── tests/                        # Test suite
-├── docker-compose.yml           # Production config
-├── docker-compose.override.yml  # Development overrides
-├── Dockerfile                   # Container definition
-├── pyproject.toml              # Dependencies (uv)
-├── .env                        # Environment variables
-└── DEVELOPMENT.md              # Detailed dev guide
+├── scripts/                      # Development scripts
+│   ├── dev.sh                    # Main development tool ⭐
+│   ├── setup.sh                  # First-time setup
+│   ├── db.sh                     # Database management
+│   ├── format.sh                 # Code formatting
+│   ├── lint.sh                   # Code quality checks
+│   ├── test.sh                   # Run test suite
+│   ├── quick_test.py             # Fast API tests
+│   ├── seed_data.py              # Test data generation
+│   ├── clean.sh                  # Cleanup artifacts
+│   ├── pre-deploy.sh             # Pre-deployment checks
+│   └── README.md                 # Scripts documentation
+├── email-templates/              # Email templates
+│   ├── src/                      # MJML sources (editable)
+│   ├── build/                    # HTML outputs (used by app)
+│   └── README.md                 # Email template docs
+├── alembic/                      # Database migrations
+├── .github/workflows/            # CI/CD workflows
+├── docker-compose.yml            # Main Docker config
+├── docker-compose.override.yml   # Local dev overrides
+├── docker-compose.prod.yml       # Production config
+├── Dockerfile                    # Development container
+├── Dockerfile.prod               # Production container
+├── pyproject.toml                # Python dependencies (uv)
+├── .env                          # Environment variables
+└── README.md                     # This file
 ```
 
 ## Architecture
 
 This project follows **FastAPI Best Practices**:
 
-1. **Modular Structure**: Each domain (auth, items, etc.) has its own directory
-2. **Separation of Concerns**:
-   - `router.py`: API endpoints
-   - `schemas.py`: Request/response models
-   - `models.py`: Database models
-   - `service.py`: Business logic
-   - `dependencies.py`: Dependency injection
-   - `utils.py`: Helper functions
-3. **Type Safety**: Pydantic models everywhere
-4. **Async/Await**: Non-blocking I/O operations
-5. **Dependency Injection**: FastAPI's DI system
+1. **Netflix Dispatch Pattern**: Features organized by domain (`auth/`, `items/`, `utils/`)
+2. **Router Organization**: Single Responsibility Principle
+   - Auth split into: `login.py`, `users.py`, `roles.py`, `permissions.py`
+   - Clear separation of concerns
+3. **Constants Management**: No magic strings
+   - `src/auth/constants.py` - Auth messages
+   - `src/items/constants.py` - Item messages
+4. **Enhanced API Documentation**: Detailed OpenAPI specs with response codes
+5. **Database Naming**: PostgreSQL conventions for indexes and constraints
+6. **Dependency Injection**: Type-annotated with `Annotated`, injectable settings
+7. **Type Safety**: Pydantic models everywhere
+8. **Async/Await**: Non-blocking I/O operations
 
 ## Docker Compose Watch
 
@@ -236,7 +264,12 @@ docker compose watch
 
 ## Documentation
 
+- **[QUICKSTART.md](QUICKSTART.md)**: Get started in 5 minutes
 - **[DEVELOPMENT.md](DEVELOPMENT.md)**: Detailed development guide
+- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Production deployment guide
+- **[TESTING.md](TESTING.md)**: Testing strategies and guides
+- **[scripts/README.md](scripts/README.md)**: All development scripts
+- **[email-templates/README.md](email-templates/README.md)**: Email template editing
 - **[FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices)**: Structure guidelines
 - **[FastAPI Full-Stack Template](https://github.com/fastapi/full-stack-fastapi-template)**: Development workflow
 
