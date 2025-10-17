@@ -37,6 +37,10 @@ class Item(ItemInDBBase):
     pass
 
 
+# Alias for consistency with naming convention
+ItemPublic = Item
+
+
 # Properties properties stored in DB
 class ItemInDB(ItemInDBBase):
     pass

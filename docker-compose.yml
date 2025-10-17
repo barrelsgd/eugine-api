@@ -60,6 +60,8 @@ services:
       - ./src:/app/src
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
     env_file:
       - .env
     environment:
@@ -94,11 +96,11 @@ services:
     volumes:
       - ./src:/app/src
       - ./alembic:/app/alembic
-      - ./templates:/app/templates
+      - ./email-templates:/app/email-templates
       - ./scripts:/app/scripts
       - ./alembic.ini:/app/alembic.ini
       - ./pyproject.toml:/app/pyproject.toml
-    command: uv run uvicorn src.main:app --host 0.0.0.0 --port 80 --reload
+    command: uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     develop:
       watch:
         - action: sync
@@ -108,8 +110,8 @@ services:
           path: ./alembic
           target: /app/alembic
         - action: sync
-          path: ./templates
-          target: /app/templates
+          path: ./email-templates
+          target: /app/email-templates
         - action: sync
           path: ./scripts
           target: /app/scripts
@@ -125,7 +127,7 @@ services:
         - CMD
         - python
         - -c
-        - "import sys,urllib.request,socket; socket.setdefaulttimeout(3);\n\ntry:\n    r=urllib.request.urlopen('http://localhost:80/api/v1/utils/health-check/'); sys.exit(0 if r.status==200 else 1)\nexcept Exception:\n    sys.exit(1)"
+        - "import sys,urllib.request,socket; socket.setdefaulttimeout(3);\n\ntry:\n    r=urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/'); sys.exit(0 if r.status==200 else 1)\nexcept Exception:\n    sys.exit(1)"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -134,7 +136,7 @@ services:
       - traefik.docker.network=traefik-public
       - traefik.constraint-label=traefik-public
 
-      - traefik.http.services.${STACK_NAME:-fast-back}-api.loadbalancer.server.port=80
+      - traefik.http.services.${STACK_NAME:-fast-back}-api.loadbalancer.server.port=8000
 
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.rule=Host(`${DOMAIN:-localhost}`) && (PathPrefix(`/api`) || PathPrefix(`/docs`) || PathPrefix(`/redoc`))
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.entrypoints=http

@@ -60,7 +60,7 @@ jobs:
             const sha = await resolveCommitSha();
 
             // Define gating policy
-            const REQUIRED = ['test-backend', 'lint-backend', 'test-docker-compose'];
+            const REQUIRED = ['CI', 'test-docker-compose'];
             const EXCLUDED = ['verify checks for release commit', 'deploy'];
 
             // Helper to fetch and filter check runs according to the policy
@@ -222,14 +222,14 @@ jobs:
           echo -e "\n=== Prestart logs (tail 120) ==="
           docker compose --env-file .env -p "barrels-api" logs prestart --tail=120 2>&1 || true
 
-          echo -e "\n=== Backend logs (tail 120) ==="
-          docker compose --env-file .env -p "barrels-api" logs backend --tail=120 2>&1 || true
+          echo -e "\n=== API logs (tail 120) ==="
+          docker compose --env-file .env -p "barrels-api" logs api --tail=120 2>&1 || true
 
           echo -e "\n=== DB logs (tail 60) ==="
           docker compose --env-file .env -p "barrels-api" logs db --tail=60 2>&1 || true
 
-          echo -e "\n=== Traefik logs (tail 60) ==="
-          docker compose --env-file .env -p "barrels-api" logs traefik --tail=60 2>&1 || true
+          echo -e "\n=== Proxy logs (tail 60) ==="
+          docker compose --env-file .env -p "barrels-api" logs proxy --tail=60 2>&1 || true
 
           echo -e "\n=== Effective .env (sanitized) ==="
           sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
@@ -275,15 +275,15 @@ jobs:
           echo "=== docker ps ===" && docker ps -a || true
           echo "=== compose ps (barrels-api) ===" && docker compose -p "barrels-api" ps || true
           PRESTART_ID=$(docker compose -p "barrels-api" ps -q prestart || true)
-          BACKEND_ID=$(docker compose -p "barrels-api" ps -q backend || true)
+          API_ID=$(docker compose -p "barrels-api" ps -q api || true)
           DB_ID=$(docker compose -p "barrels-api" ps -q db || true)
-          echo "Prestart container: ${PRESTART_ID:-none}"; echo "Backend container: ${BACKEND_ID:-none}"; echo "DB container: ${DB_ID:-none}"
+          echo "Prestart container: ${PRESTART_ID:-none}"; echo "API container: ${API_ID:-none}"; echo "DB container: ${DB_ID:-none}"
           if [ -n "$PRESTART_ID" ]; then
             echo "=== prestart inspect ==="; docker inspect "$PRESTART_ID" --format 'ExitCode={{.State.ExitCode}} StartedAt={{.State.StartedAt}} FinishedAt={{.State.FinishedAt}} Error={{.State.Error}}' || true
           fi
           echo "=== prestart logs (tail 400) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=400 prestart || true
           echo "=== prestart suspected errors ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color prestart | egrep -i "(pydantic|validation|sentry|dsn|password|FIRST_SUPERUSER|alembic|traceback|exception)" || true
           echo "=== db logs (tail 200) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 db || true
-          echo "=== backend logs (tail 200) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 backend || true
+          echo "=== api logs (tail 200) ===" && docker compose --env-file .env -f docker-compose.yml -p "barrels-api" logs --no-color --tail=200 api || true
           echo "=== env (sanitized) ===" && sed -n '1,200p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
           echo "=== health check (best effort) ==="; curl -sS https://api.barrels.gd/api/v1/utils/health-check/ || true

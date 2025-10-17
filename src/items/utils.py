@@ -1,4 +1,4 @@
-from typing import Any
+from collections.abc import Sequence
 
 from sqlmodel import Session, func, select
 
@@ -13,23 +13,20 @@ def get_items_count_for_user(session: Session, user: User) -> int:
         count_statement = select(func.count()).select_from(Item)
     else:
         count_statement = (
-            select(func.count())
-            .select_from(Item)
-            .where(Item.owner_id == user.id)
+            select(func.count()).select_from(Item).where(Item.owner_id == user.id)
         )
     return session.exec(count_statement).one()
 
 
-def get_items_for_user(session: Session, user: User, skip: int = 0, limit: int = 100) -> list[Item]:
+def get_items_for_user(
+    session: Session, user: User, skip: int = 0, limit: int = 100
+) -> Sequence[Item]:
     """Get items for a specific user with pagination."""
     if user.is_superuser:
         statement = select(Item).offset(skip).limit(limit)
     else:
         statement = (
-            select(Item)
-            .where(Item.owner_id == user.id)
-            .offset(skip)
-            .limit(limit)
+            select(Item).where(Item.owner_id == user.id).offset(skip).limit(limit)
         )
     return session.exec(statement).all()
 

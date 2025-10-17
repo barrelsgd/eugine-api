@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
-        return MultiHostUrl.build(
+        return MultiHostUrl.build(  # type: ignore[return-value]
             scheme="postgresql+psycopg",
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
@@ -101,6 +101,12 @@ class Settings(BaseSettings):
         has_provider = bool(self.RESEND_API_KEY or self.SMTP_HOST)
         return bool(has_from and has_provider)
 
+    # Alias for backward compatibility
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def EMAILS_ENABLED(self) -> bool:
+        return self.emails_enabled
+
     EMAIL_TEST_USER: EmailStr = "test@example.com"
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
@@ -127,4 +133,23 @@ class Settings(BaseSettings):
         return self
 
 
+# Global settings instance for convenience
+# Use this for simple imports, but prefer get_settings() dependency for testability
 settings = Settings()  # type: ignore
+
+
+# Dependency for injecting settings
+# This allows test overrides and follows best practices
+def get_settings() -> Settings:
+    """
+    Dependency to get settings instance.
+    
+    Use this in FastAPI dependencies when you need testable settings.
+    The function can be overridden in tests to provide custom settings.
+    
+    Example:
+        @router.get("/")
+        def my_route(settings: Annotated[Settings, Depends(get_settings)]):
+            return {"project": settings.PROJECT_NAME}
+    """
+    return settings

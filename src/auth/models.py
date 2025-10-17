@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
@@ -30,11 +28,15 @@ class User(UserBase, table=True):
     hashed_password: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Relationships
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
-    user_image: "UserImage" | None = Relationship(back_populates="user", cascade_delete=True)
-    roles: list["Role"] = Relationship(back_populates="users", sa_relationship_kwargs={"secondary": "user_role"})
+    user_image: Optional["UserImage"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    roles: list["Role"] = Relationship(
+        back_populates="users", sa_relationship_kwargs={"secondary": "user_role"}
+    )
     sessions: list["Session"] = Relationship(back_populates="user", cascade_delete=True)
 
 
@@ -48,9 +50,9 @@ class UserImage(UserImageBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     user_id: uuid.UUID = Field(foreign_key="user.id", unique=True)
-    user: User = Relationship(back_populates="user_image")
+    user: "User" = Relationship(back_populates="user_image")
 
 
 # Role model
@@ -63,9 +65,13 @@ class Role(RoleBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    users: list[User] = Relationship(back_populates="roles", sa_relationship_kwargs={"secondary": "user_role"})
-    permissions: list["Permission"] = Relationship(back_populates="roles", sa_relationship_kwargs={"secondary": "role_permission"})
+
+    users: list["User"] = Relationship(
+        back_populates="roles", sa_relationship_kwargs={"secondary": "user_role"}
+    )
+    permissions: list["Permission"] = Relationship(
+        back_populates="roles", sa_relationship_kwargs={"secondary": "role_permission"}
+    )
 
 
 # Permission model
@@ -80,14 +86,15 @@ class Permission(PermissionBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    roles: list[Role] = Relationship(back_populates="permissions", sa_relationship_kwargs={"secondary": "role_permission"})
-    
+
+    roles: list["Role"] = Relationship(
+        back_populates="permissions",
+        sa_relationship_kwargs={"secondary": "role_permission"},
+    )
+
     class Config:
         # Unique constraint on action, entity, access combination
-        table_args = (
-            {"sqlite_autoincrement": True},
-        )
+        table_args = ({"sqlite_autoincrement": True},)
 
 
 # Session model for user sessions
@@ -100,21 +107,21 @@ class Session(SessionBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     user_id: uuid.UUID = Field(foreign_key="user.id")
-    user: User = Relationship(back_populates="sessions")
+    user: "User" = Relationship(back_populates="sessions")
 
 
 # Link tables for many-to-many relationships
 class UserRoleLink(SQLModel, table=True):
     __tablename__ = "user_role"
-    
+
     user_id: uuid.UUID = Field(foreign_key="user.id", primary_key=True)
     role_id: uuid.UUID = Field(foreign_key="role.id", primary_key=True)
 
 
 class RolePermissionLink(SQLModel, table=True):
     __tablename__ = "role_permission"
-    
+
     role_id: uuid.UUID = Field(foreign_key="role.id", primary_key=True)
     permission_id: uuid.UUID = Field(foreign_key="permission.id", primary_key=True)

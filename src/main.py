@@ -5,7 +5,10 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.cors import CORSMiddleware
 
-from src.auth.router import router as auth_router
+from src.auth.routers.login import router as login_router
+from src.auth.routers.permissions import router as permissions_router
+from src.auth.routers.roles import router as roles_router
+from src.auth.routers.users import router as users_router
 from src.config import settings
 from src.exceptions import (
     AppException,
@@ -24,11 +27,21 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
     sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    generate_unique_id_function=custom_generate_unique_id,
-)
+# Configure app settings based on environment
+# Hide API docs in production/staging for security
+app_configs = {
+    "title": settings.PROJECT_NAME,
+    "generate_unique_id_function": custom_generate_unique_id,
+}
+
+# Only show OpenAPI docs in local development
+if settings.ENVIRONMENT == "local":
+    app_configs["openapi_url"] = f"{settings.API_V1_STR}/openapi.json"
+else:
+    # Setting openapi_url to None disables /docs and /redoc endpoints
+    app_configs["openapi_url"] = None
+
+app = FastAPI(**app_configs)
 
 # Set all CORS enabled origins
 if settings.all_cors_origins:
@@ -40,19 +53,28 @@ if settings.all_cors_origins:
     )
 
 # Include routers
-app.include_router(auth_router, prefix="/api/v1")
+# Auth-related routers (split for better organization)
+app.include_router(login_router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(roles_router, prefix="/api/v1")
+app.include_router(permissions_router, prefix="/api/v1")
+
+# Other routers
 app.include_router(items_router, prefix="/api/v1")
 app.include_router(utils_router, prefix="/api/v1")
 
 # Register exception handlers
-app.add_exception_handler(AppException, app_exception_handler)
-app.add_exception_handler(ValidationError, validation_exception_handler)
-app.add_exception_handler(IntegrityError, integrity_error_handler)
+app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]
+app.add_exception_handler(ValidationError, validation_exception_handler)  # type: ignore[arg-type]
+app.add_exception_handler(IntegrityError, integrity_error_handler)  # type: ignore[arg-type]
 
 # Include private router for local development
 if settings.ENVIRONMENT == "local":
     try:
-        from src.private.router import router as private_router
+        from src.private.router import (
+            router as private_router,  # type: ignore[import-untyped]
+        )
+
         app.include_router(private_router, prefix="/api/v1")
     except ImportError:
         # Private module is optional

@@ -1,11 +1,15 @@
-import uuid
 from typing import Any
 
 from sqlmodel import Session, select
 
-from src.auth.models import User
-from src.auth.schemas import UserCreate, UserUpdate
-from src.auth.utils import get_password_hash, verify_password, create_access_token
+from src.auth.models import Permission, Role, User
+from src.auth.schemas import (
+    PermissionCreate,
+    RoleCreate,
+    UserCreate,
+    UserUpdate,
+)
+from src.auth.utils import create_access_token, get_password_hash, verify_password
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -51,12 +55,54 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
     return db_user
 
 
+# Role management
+def create_role(*, session: Session, role_in: RoleCreate) -> Role:
+    """Create a new role."""
+    db_role = Role.model_validate(role_in)
+    session.add(db_role)
+    session.commit()
+    session.refresh(db_role)
+    return db_role
+
+
+def get_roles(*, session: Session, skip: int = 0, limit: int = 100) -> list[Role]:
+    """Get all roles."""
+    statement = select(Role).offset(skip).limit(limit)
+    return list(session.exec(statement).all())
+
+
+# Permission management
+def create_permission(
+    *, session: Session, permission_in: PermissionCreate
+) -> Permission:
+    """Create a new permission."""
+    db_permission = Permission.model_validate(permission_in)
+    session.add(db_permission)
+    session.commit()
+    session.refresh(db_permission)
+    return db_permission
+
+
+def get_permissions(
+    *, session: Session, skip: int = 0, limit: int = 100
+) -> list[Permission]:
+    """Get all permissions."""
+    statement = select(Permission).offset(skip).limit(limit)
+    return list(session.exec(statement).all())
+
+
 __all__ = [
     "create_user",
-    "update_user", 
+    "update_user",
     "get_user_by_email",
     "authenticate",
     "get_password_hash",
     "verify_password",
-    "create_access_token"
+    "create_access_token",
+    "create_role",
+    "get_roles",
+    "create_permission",
+    "get_permissions",
+    "Role",
+    "Permission",
 ]

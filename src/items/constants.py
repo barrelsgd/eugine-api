@@ -1,34 +1,29 @@
 """
-Items module constants and error codes.
+Items module constants.
+
+This module contains all constants used throughout the items module.
 """
 
-from enum import Enum
+# HTTP Status codes
+HTTP_400_BAD_REQUEST = 400
+HTTP_404_NOT_FOUND = 404
 
+# Error messages
+ERROR_ITEM_NOT_FOUND = "Item not found"
+ERROR_INSUFFICIENT_PERMISSIONS = "Not enough permissions"
 
-class ItemErrorCode(str, Enum):
-    """Item error codes."""
-    
-    ITEM_NOT_FOUND = "ITEM_NOT_FOUND"
-    ITEM_ALREADY_EXISTS = "ITEM_ALREADY_EXISTS"
-    INVALID_ITEM_DATA = "INVALID_ITEM_DATA"
-    UNAUTHORIZED_ACCESS = "UNAUTHORIZED_ACCESS"
-    ITEM_LIMIT_EXCEEDED = "ITEM_LIMIT_EXCEEDED"
+# Success messages
+SUCCESS_ITEM_DELETED = "Item deleted successfully"
 
-
-class ItemMessage(str, Enum):
-    """Item messages."""
-    
-    ITEM_CREATED = "Item created successfully"
-    ITEM_UPDATED = "Item updated successfully"
-    ITEM_DELETED = "Item deleted successfully"
-    ITEMS_RETRIEVED = "Items retrieved successfully"
-
-
-# Item settings
+# Item field constraints
 MAX_TITLE_LENGTH = 255
+MAX_CONTENT_LENGTH = 10000
 MAX_DESCRIPTION_LENGTH = 1000
-MIN_TITLE_LENGTH = 1
 
-# Pagination settings
-DEFAULT_PAGE_SIZE = 20
-MAX_PAGE_SIZE = 100
+# Image constraints
+MAX_ALT_TEXT_LENGTH = 255
+MAX_OBJECT_KEY_LENGTH = 500
+
+# Default pagination values
+DEFAULT_SKIP = 0
+DEFAULT_LIMIT = 100

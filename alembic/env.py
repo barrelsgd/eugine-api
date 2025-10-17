@@ -29,8 +29,12 @@ config.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import SQLModel metadata
+# Import SQLModel metadata with naming conventions
 from sqlmodel import SQLModel
+from src.database import POSTGRES_INDEXES_NAMING_CONVENTION
+
+# Apply naming convention to metadata
+SQLModel.metadata.naming_convention = POSTGRES_INDEXES_NAMING_CONVENTION
 target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,

@@ -1,41 +1,48 @@
 """
-Authentication module constants and error codes.
+Authentication module constants.
+
+This module contains all constants used throughout the auth module.
+Centralizing constants makes the codebase easier to maintain and reduces magic strings.
 """
 
-from enum import Enum
-
-
-class AuthErrorCode(str, Enum):
-    """Authentication error codes."""
-    
-    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
-    USER_NOT_FOUND = "USER_NOT_FOUND"
-    USER_INACTIVE = "USER_INACTIVE"
-    USER_ALREADY_EXISTS = "USER_ALREADY_EXISTS"
-    INVALID_TOKEN = "INVALID_TOKEN"
-    TOKEN_EXPIRED = "TOKEN_EXPIRED"
-    INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS"
-
-
-class AuthMessage(str, Enum):
-    """Authentication messages."""
-    
-    LOGIN_SUCCESS = "Login successful"
-    LOGOUT_SUCCESS = "Logout successful"
-    REGISTRATION_SUCCESS = "Registration successful"
-    PASSWORD_RESET_SUCCESS = "Password reset successful"
-    PROFILE_UPDATE_SUCCESS = "Profile updated successfully"
-
-
 # Token settings
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
-ALGORITHM = "HS256"
+TOKEN_TYPE_BEARER = "bearer"
+TOKEN_ALGORITHM = "HS256"
 
-# Password settings
+# HTTP Status codes for auth operations
+HTTP_400_BAD_REQUEST = 400
+HTTP_401_UNAUTHORIZED = 401
+HTTP_403_FORBIDDEN = 403
+HTTP_404_NOT_FOUND = 404
+HTTP_409_CONFLICT = 409
+
+# Error messages
+ERROR_INCORRECT_CREDENTIALS = "Incorrect email or password"
+ERROR_INACTIVE_USER = "Inactive user"
+ERROR_INSUFFICIENT_PRIVILEGES = "The user doesn't have enough privileges"
+ERROR_USER_NOT_FOUND = "User not found"
+ERROR_USER_EXISTS = "The user with this email already exists in the system."
+ERROR_EMAIL_EXISTS = "User with this email already exists"
+ERROR_INVALID_TOKEN = "Invalid token"
+ERROR_INVALID_CREDENTIALS = "Could not validate credentials"
+ERROR_PASSWORD_SAME = "New password cannot be the same as the current one"
+ERROR_PASSWORD_INCORRECT = "Incorrect password"
+ERROR_SUPERUSER_DELETE_SELF = "Super users are not allowed to delete themselves"
+
+# Success messages
+SUCCESS_PASSWORD_UPDATED = "Password updated successfully"
+SUCCESS_PASSWORD_RECOVERY_SENT = "Password recovery email sent"
+SUCCESS_USER_DELETED = "User deleted successfully"
+
+# User field constraints
+MIN_USERNAME_LENGTH = 3
+MAX_USERNAME_LENGTH = 255
 MIN_PASSWORD_LENGTH = 8
-MAX_PASSWORD_LENGTH = 128
-
-# User settings
+MAX_PASSWORD_LENGTH = 40
+MIN_NAME_LENGTH = 1
+MAX_NAME_LENGTH = 100
 MAX_EMAIL_LENGTH = 255
-MAX_FULL_NAME_LENGTH = 255
+
+# Default pagination values
+DEFAULT_SKIP = 0
+DEFAULT_LIMIT = 100

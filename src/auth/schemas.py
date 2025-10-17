@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
+
 from pydantic import EmailStr, Field
 
 from src.models import BaseModel
+
 from .models import UserBase
 
 
@@ -19,8 +21,6 @@ class UserRegister(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     middle_name: str | None = None
     last_name: str = Field(min_length=1, max_length=100)
-
-
 
 
 # Properties to receive via API on update, all are optional
@@ -148,22 +148,6 @@ class SessionPublic(SessionBase):
     created_at: datetime
     updated_at: datetime
     user_id: uuid.UUID
-
-
-# Generic message
-class Message(BaseModel):
-    message: str
-
-
-# JSON payload containing access token
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
-# Contents of JWT token
-class TokenPayload(BaseModel):
-    sub: str | None = None
 
 
 class NewPassword(BaseModel):

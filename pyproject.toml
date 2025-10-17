@@ -23,8 +23,8 @@ dependencies = [
     "pyjwt<3.0.0,>=2.8.0",
 ]
 
-[dependency-groups]
-dev = [
+[tool.uv]
+dev-dependencies = [
     "pytest<8.0.0,>=7.4.3",
     "mypy<2.0.0,>=1.8.0",
     "ruff<1.0.0,>=0.2.2",
@@ -42,7 +42,7 @@ packages = ["src"]
 
 [tool.mypy]
 strict = true
-exclude = ["alembic"]
+exclude = ["venv", ".venv", "alembic"]
 
 [tool.ruff]
 target-version = "py310"
@@ -72,7 +72,7 @@ ignore = [
 keep-runtime-typing = true
 
 [tool.coverage.run]
-source = ["app"]
+source = ["src"]
 dynamic_context = "test_function"
 
 [tool.coverage.report]

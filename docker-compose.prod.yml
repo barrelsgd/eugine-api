@@ -1,0 +1,118 @@
+# Production Docker Compose Configuration
+# For deployment on servers with Traefik reverse proxy
+
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17
+    restart: always
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_SERVER=${POSTGRES_SERVER:-db}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  prestart:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}:${TAG:-latest}
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    command: bash scripts/prestart.sh
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
+    networks:
+      - default
+
+  api:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}:${TAG:-latest}
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DOMAIN=${DOMAIN}
+      - FRONTEND_HOST=${FRONTEND_HOST}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - PROJECT_NAME=${PROJECT_NAME}
+      - STACK_NAME=${STACK_NAME}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+      - EMAILS_FROM_NAME=${EMAILS_FROM_NAME}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_TLS=${SMTP_TLS}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/').read()\""]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+
+      # HTTP Router
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.middlewares=https-redirect
+
+      # HTTPS Router
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.tls=true
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.tls.certresolver=le
+
+      # Service
+      - traefik.http.services.${STACK_NAME:-fast-back}-api.loadbalancer.server.port=8000
+
+      # HTTPS Redirect Middleware
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
+    networks:
+      - traefik-public
+      - default
+
+volumes:
+  app-db-data:
+
+networks:
+  traefik-public:
+    external: true
+  default:
+    driver: bridge
+

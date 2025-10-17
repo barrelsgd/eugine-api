@@ -1,9 +1,96 @@
-.git/
-**/__pycache__/
-**/*.pyc
-.venv/
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist/
+build/
 .pytest_cache/
 .mypy_cache/
-frontend/node_modules/
-frontend/dist/
+.ruff_cache/
 htmlcov/
+.coverage
+.coverage.*
+.tox/
+.nox/
+.hypothesis/
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
+!Dockerfile.prod
+.dockerignore
+
+# Environment files (security)
+.env
+.env.*
+!.env.production.example
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Testing
+tests/
+test_*.py
+*_test.py
+conftest.py
+
+# Backups
+backend_backup_*/
+backups/
+*.bak
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Development scripts (keep only production)
+scripts/dev.sh
+scripts/setup.sh
+scripts/clean.sh
+scripts/test*.sh
+scripts/test*.py
+scripts/seed_data.py
+
+# Keep essential scripts
+!scripts/prestart.sh
+!scripts/backend_pre_start.py
+!scripts/initial_data.py
