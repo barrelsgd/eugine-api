@@ -111,6 +111,8 @@ jobs:
       SECRET_KEY: changethis
       ENVIRONMENT: local
       PROJECT_NAME: FastAPI Backend (Test)
+      EMAILS_FROM_EMAIL: test@example.com
+      SMTP_HOST: smtp.example.com
     
     services:
       postgres:
@@ -278,6 +280,8 @@ jobs:
       SECRET_KEY: changethis
       ENVIRONMENT: local
       PROJECT_NAME: FastAPI Backend (Test)
+      EMAILS_FROM_EMAIL: test@example.com
+      SMTP_HOST: smtp.example.com
     
     services:
       postgres:
