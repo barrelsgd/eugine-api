@@ -43,3 +43,4 @@ fi
 echo ""
 
 echo "✅ Prestart script completed successfully!"
+exit 0
