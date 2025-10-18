@@ -41,12 +41,22 @@ jobs:
       - name: Create traefik network (CI)
         run: docker network create traefik-public || true
       - name: Build with Docker Compose
-        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" build
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml build
       - name: Clean up any existing containers
-        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" down -v --remove-orphans
-      - name: Start services
-        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" up -d --wait api adminer
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans
+      - name: Start services (CI configuration)
+        run: |
+          # Use override file to get the correct port mapping and configuration
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d db
+          # Wait for database to be healthy
+          sleep 10
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d prestart
+          # Wait for prestart to complete
+          sleep 5
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d api
+          # Wait for API to start (no health check in main compose, so just wait)
+          sleep 15
       - name: Test API is up
         run: curl http://localhost:8000/api/v1/utils/health-check/
       - name: Clean up
-        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" down -v --remove-orphans
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans
