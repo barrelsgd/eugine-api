@@ -49,14 +49,40 @@ jobs:
           # Use override file to get the correct port mapping and configuration
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d db
           # Wait for database to be healthy
-          sleep 10
+          echo "Waiting for database to be healthy..."
+          timeout 60 bash -c 'until docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps db | grep -q healthy; do sleep 2; done'
+          
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d prestart
           # Wait for prestart to complete
-          sleep 5
+          echo "Waiting for prestart to complete..."
+          timeout 60 bash -c 'until docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart | grep -q exited; do sleep 2; done'
+          
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d api
-          # Wait for API to start (no health check in main compose, so just wait)
-          sleep 15
+          # Wait for API to start and be ready
+          echo "Waiting for API to be ready..."
+          sleep 10
+          
+          # Show container status for debugging
+          echo "=== Container Status ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps
+          
+          # Show API logs for debugging
+          echo "=== API Logs (last 20 lines) ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=20 api
       - name: Test API is up
-        run: curl http://localhost:8000/api/v1/utils/health-check/
+        run: |
+          echo "Testing API health check endpoint..."
+          # Retry logic for the health check
+          for i in {1..10}; do
+            echo "Attempt $i/10..."
+            if curl -f http://localhost:8000/api/v1/utils/health-check/; then
+              echo "✅ API health check successful!"
+              exit 0
+            fi
+            echo "❌ Health check failed, waiting 5 seconds..."
+            sleep 5
+          done
+          echo "❌ All health check attempts failed"
+          exit 1
       - name: Clean up
         run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans
