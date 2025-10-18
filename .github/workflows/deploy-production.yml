@@ -124,12 +124,13 @@ jobs:
             cp "$PROD_ENV" .env
           else
             echo "::warning::Persisted production env not found at $PROD_ENV"
-            if [ -f .env ]; then
-              echo "Using existing workspace .env"
-            else
-              echo "::error::.env not found and no persisted production env available. Create $PROD_ENV with strong secrets first."
+            echo "Creating .env from .env.production.example template"
+            if [ ! -f .env.production.example ]; then 
+              echo "::error::.env.production.example is missing in the repository root"
               exit 1
             fi
+            cp .env.production.example .env
+            echo "::warning::Using template .env.production.example - ensure secrets are properly configured on the VM"
           fi
 
           # Normalize .env newlines to avoid sed/crlf issues
