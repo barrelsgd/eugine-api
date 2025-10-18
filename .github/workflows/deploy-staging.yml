@@ -1,7 +1,10 @@
 name: Deploy to Staging
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
       - master
 
@@ -10,6 +13,7 @@ jobs:
     name: Verify checks for staging commit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: github.event.workflow_run.conclusion == 'success'
     permissions:
       checks: read
       contents: read
@@ -20,7 +24,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const sha = context.sha;
+            const sha = context.payload.workflow_run.head_sha;
 
             // Define gating policy
             const REQUIRED = ['CI', 'Test Docker Compose'];
