@@ -27,16 +27,25 @@ jobs:
             const sha = context.payload.workflow_run.head_sha;
 
             // Define gating policy
-            const REQUIRED = ['CI', 'Test Docker Compose'];
+            const REQUIRED = ['ci', 'test docker compose'];
             const EXCLUDED = ['verify checks for staging commit', 'deploy'];
 
             async function fetchFilteredRuns() {
               const resp = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
               const all = resp.data.check_runs || [];
               const lc = (s) => (s || '').toLowerCase();
-              return all
+              
+              // Debug: Log all check runs
+              core.info(`All check runs found: ${all.map(r => `${r.name} (${r.status}/${r.conclusion})`).join(', ')}`);
+              
+              const filtered = all
                 .filter(r => !EXCLUDED.includes(lc(r.name)))
                 .filter(r => REQUIRED.length === 0 || REQUIRED.includes(lc(r.name)));
+              
+              // Debug: Log filtered results
+              core.info(`Filtered check runs: ${filtered.map(r => `${r.name} (${r.status}/${r.conclusion})`).join(', ')}`);
+              
+              return filtered;
             }
 
             const maxAttempts = 90; // up to ~45 minutes
