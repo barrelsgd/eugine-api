@@ -8,6 +8,7 @@ It's called by the prestart.sh script during container startup.
 
 import logging
 import sys
+
 from sqlmodel import Session, create_engine, text
 
 from src.config import settings
@@ -20,11 +21,11 @@ logger = logging.getLogger(__name__)
 def init() -> None:
     """Initialize the database connection and verify it's working."""
     logger.info("Initializing service")
-    
+
     try:
         # Create engine
         engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
-        
+
         # Test connection
         with Session(engine) as session:
             # Simple query to test connection
@@ -34,7 +35,7 @@ def init() -> None:
             else:
                 logger.error("Database connection test failed")
                 sys.exit(1)
-                
+
     except Exception as e:
         logger.error("Failed to initialize database connection: %s", e)
         sys.exit(1)

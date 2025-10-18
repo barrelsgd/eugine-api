@@ -7,6 +7,7 @@ It's called by the prestart.sh script during container startup.
 """
 
 import logging
+
 from sqlmodel import Session
 
 from src.config import settings
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Create initial data in the database."""
     logger.info("Creating initial data")
-    
+
     try:
         with Session(engine) as session:
             init_db(session)
