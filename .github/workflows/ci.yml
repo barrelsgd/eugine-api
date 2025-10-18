@@ -109,7 +109,8 @@ jobs:
       FIRST_SUPERUSER: admin@example.com
       FIRST_SUPERUSER_PASSWORD: changethis
       SECRET_KEY: changethis
-      ENVIRONMENT: test
+      ENVIRONMENT: local
+      PROJECT_NAME: FastAPI Backend (Test)
     
     services:
       postgres:
@@ -275,7 +276,8 @@ jobs:
       FIRST_SUPERUSER: admin@example.com
       FIRST_SUPERUSER_PASSWORD: changethis
       SECRET_KEY: changethis
-      ENVIRONMENT: test
+      ENVIRONMENT: local
+      PROJECT_NAME: FastAPI Backend (Test)
     
     services:
       postgres:
