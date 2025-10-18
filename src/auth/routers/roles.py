@@ -3,6 +3,7 @@ Role management endpoints.
 
 This router handles role CRUD operations. All endpoints require superuser privileges.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -46,4 +47,3 @@ def create_role(*, session: SessionDep, role_in: RoleCreate) -> Any:
     """
     role = service.create_role(session=session, role_in=role_in)
     return role
-

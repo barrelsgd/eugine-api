@@ -6,6 +6,7 @@ This router handles all authentication-related operations including:
 - Password recovery email
 - Password reset
 """
+
 from datetime import timedelta
 from typing import Annotated, Any
 
@@ -154,4 +155,3 @@ def recover_password_html_content(email: str, session: SessionDep) -> Any:
     return HTMLResponse(
         content=email_data.html_content, headers={"subject:": email_data.subject}
     )
-

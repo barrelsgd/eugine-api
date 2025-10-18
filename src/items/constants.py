@@ -8,6 +8,7 @@ This module contains all constants used throughout the items module.
 HTTP_400_BAD_REQUEST = 400
 HTTP_404_NOT_FOUND = 404
 
+
 # Error codes
 class ItemErrorCode:
     ITEM_NOT_FOUND = "item_not_found"
@@ -16,6 +17,7 @@ class ItemErrorCode:
     UNAUTHORIZED_ACCESS = "unauthorized_access"
     INVALID_ITEM_DATA = "invalid_item_data"
     ITEM_LIMIT_EXCEEDED = "item_limit_exceeded"
+
 
 # Error messages
 ERROR_ITEM_NOT_FOUND = "Item not found"

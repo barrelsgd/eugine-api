@@ -4,6 +4,7 @@ Pagination utilities for list endpoints.
 This module provides standard pagination for all list endpoints,
 ensuring consistent API behavior and better user experience.
 """
+
 from typing import Annotated, Generic, TypeVar
 
 from fastapi import Query

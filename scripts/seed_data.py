@@ -1,6 +1,7 @@
 """
 Seed database with test data for development
 """
+
 import logging
 
 from sqlmodel import Session, select
@@ -33,9 +34,7 @@ def create_test_users(session: Session, count: int = 5) -> list[User]:
         except Exception as e:
             logger.warning(f"User {user_in.email} already exists or error: {e}")
             # Try to get existing user
-            user = session.exec(
-                select(User).where(User.email == user_in.email)
-            ).first()
+            user = session.exec(select(User).where(User.email == user_in.email)).first()
             if user:
                 users.append(user)
     return users
@@ -46,8 +45,8 @@ def create_test_items(session: Session, users: list[User], items_per_user: int =
     for user in users:
         for i in range(items_per_user):
             item = Item(
-                title=f"Test Item {i+1} for {user.username}",
-                description=f"This is a test item description {i+1}",
+                title=f"Test Item {i + 1} for {user.username}",
+                description=f"This is a test item description {i + 1}",
                 owner_id=user.id,
             )
             session.add(item)
@@ -74,4 +73,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

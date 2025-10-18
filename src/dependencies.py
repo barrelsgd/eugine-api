@@ -18,6 +18,7 @@ Usage Example:
         # current_user is automatically injected and validated
         return current_user
 """
+
 from collections.abc import Generator
 from typing import Annotated
 

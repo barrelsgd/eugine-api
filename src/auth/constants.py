@@ -16,6 +16,7 @@ HTTP_403_FORBIDDEN = 403
 HTTP_404_NOT_FOUND = 404
 HTTP_409_CONFLICT = 409
 
+
 # Error codes
 class AuthErrorCode:
     INVALID_CREDENTIALS = "invalid_credentials"
@@ -26,6 +27,7 @@ class AuthErrorCode:
     INVALID_TOKEN = "invalid_token"
     TOKEN_EXPIRED = "token_expired"
     INSUFFICIENT_PERMISSIONS = "insufficient_permissions"
+
 
 # Error messages
 ERROR_INCORRECT_CREDENTIALS = "Incorrect email or password"

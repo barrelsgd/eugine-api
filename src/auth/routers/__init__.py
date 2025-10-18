@@ -1,2 +1,1 @@
 """Authentication routers package."""
-

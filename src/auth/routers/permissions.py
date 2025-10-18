@@ -3,6 +3,7 @@ Permission management endpoints.
 
 This router handles permission CRUD operations. All endpoints require superuser privileges.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -47,4 +48,3 @@ def create_permission(*, session: SessionDep, permission_in: PermissionCreate) -
     """
     permission = service.create_permission(session=session, permission_in=permission_in)
     return permission
-

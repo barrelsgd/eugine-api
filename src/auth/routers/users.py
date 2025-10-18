@@ -9,6 +9,7 @@ This router handles:
 - User deletion
 - Password changes
 """
+
 import uuid
 from typing import Any
 
@@ -114,9 +115,7 @@ def update_user_me(
     if user_in.email:
         existing_user = service.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(
-                status_code=409, detail=ERROR_USER_EXISTS
-            )
+            raise HTTPException(status_code=409, detail=ERROR_USER_EXISTS)
     user_data = user_in.model_dump(exclude_unset=True)
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
@@ -135,9 +134,7 @@ def update_password_me(
     if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail=ERROR_PASSWORD_INCORRECT)
     if body.current_password == body.new_password:
-        raise HTTPException(
-            status_code=400, detail=ERROR_PASSWORD_SAME
-        )
+        raise HTTPException(status_code=400, detail=ERROR_PASSWORD_SAME)
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     session.add(current_user)
@@ -151,9 +148,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     Delete own user.
     """
     if current_user.is_superuser:
-        raise HTTPException(
-            status_code=403, detail=ERROR_SUPERUSER_DELETE_SELF
-        )
+        raise HTTPException(status_code=403, detail=ERROR_SUPERUSER_DELETE_SELF)
     session.delete(current_user)
     session.commit()
     return Message(message=SUCCESS_USER_DELETED)
@@ -231,9 +226,7 @@ def update_user(
     if user_in.email:
         existing_user = service.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
-            raise HTTPException(
-                status_code=409, detail=ERROR_USER_EXISTS
-            )
+            raise HTTPException(status_code=409, detail=ERROR_USER_EXISTS)
 
     db_user = service.update_user(session=session, db_user=db_user, user_in=user_in)
     return db_user
@@ -253,12 +246,9 @@ def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail=ERROR_USER_NOT_FOUND)
     if user == current_user:
-        raise HTTPException(
-            status_code=403, detail=ERROR_SUPERUSER_DELETE_SELF
-        )
+        raise HTTPException(status_code=403, detail=ERROR_SUPERUSER_DELETE_SELF)
     statement = delete(Item).where(col(Item.owner_id) == user_id)
     session.exec(statement)
     session.delete(user)
     session.commit()
     return Message(message=SUCCESS_USER_DELETED)
-
