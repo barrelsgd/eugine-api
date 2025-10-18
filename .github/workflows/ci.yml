@@ -54,7 +54,15 @@ jobs:
         run: uv run ruff format src scripts --check
 
       - name: Run mypy (Type Checker)
-        run: uv run mypy src
+        run: |
+          echo "🔍 Running type checker..."
+          if uv run mypy src; then
+            echo "✅ Type checking passed"
+          else
+            echo "⚠️ Type checking found issues (non-blocking for now)"
+            echo "📋 Type issues summary:"
+            uv run mypy src --show-error-codes || true
+          fi
         continue-on-error: true  # Don't fail on type errors initially
 
   # Job 2: Security Checks
@@ -141,10 +149,24 @@ jobs:
           FIRST_SUPERUSER: admin@example.com
           FIRST_SUPERUSER_PASSWORD: changethis
         run: |
-          uv run coverage run --source=src -m pytest
+          echo "🧪 Running test suite with coverage..."
+          if uv run coverage run --source=src -m pytest -v; then
+            echo "✅ All tests passed"
+          else
+            echo "❌ Some tests failed"
+            echo "📋 Test failure summary:"
+            uv run pytest --tb=short -v || true
+            exit 1
+          fi
+          
+          echo "📊 Generating coverage report..."
           uv run coverage report --show-missing
           uv run coverage xml
           uv run coverage html
+          
+          # Show coverage summary
+          echo "📈 Coverage Summary:"
+          uv run coverage report --show-missing | tail -n 1
 
       - name: Upload coverage HTML
         uses: actions/upload-artifact@v4
@@ -251,13 +273,22 @@ jobs:
     steps:
       - name: Check all jobs
         run: |
+          echo "🔍 Checking CI job results..."
+          echo "Quality: ${{ needs.quality.result }}"
+          echo "Security: ${{ needs.security.result }}"
+          echo "Tests: ${{ needs.test.result }}"
+          echo "Docker: ${{ needs.docker.result }}"
+          echo "Docs: ${{ needs.docs.result }}"
+          
           if [ "${{ needs.quality.result }}" != "success" ] || \
              [ "${{ needs.security.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.docker.result }}" != "success" ] || \
              [ "${{ needs.docs.result }}" != "success" ]; then
-            echo "One or more jobs failed"
+            echo "❌ One or more CI jobs failed"
+            echo "🚫 CI pipeline failed - deployment blocked"
             exit 1
           fi
-          echo "All CI checks passed!"
+          echo "✅ All CI checks passed!"
+          echo "🚀 Ready for deployment"
 

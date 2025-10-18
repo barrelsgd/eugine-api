@@ -60,7 +60,7 @@ jobs:
             const sha = await resolveCommitSha();
 
             // Define gating policy
-            const REQUIRED = ['CI', 'test-docker-compose'];
+            const REQUIRED = ['CI', 'Test Docker Compose'];
             const EXCLUDED = ['verify checks for release commit', 'deploy'];
 
             // Helper to fetch and filter check runs according to the policy

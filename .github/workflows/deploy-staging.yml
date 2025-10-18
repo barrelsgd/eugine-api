@@ -22,7 +22,7 @@ jobs:
             const sha = context.sha;
 
             // Define gating policy
-            const REQUIRED = ['CI', 'test-docker-compose'];
+            const REQUIRED = ['CI', 'Test Docker Compose'];
             const EXCLUDED = ['verify checks for staging commit', 'deploy'];
 
             async function fetchFilteredRuns() {
@@ -193,13 +193,52 @@ jobs:
         run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
 
       - name: Deploy with Docker Compose
-        run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
+        run: |
+          echo "🚀 Deploying to staging..."
+          docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
+          
+          echo "⏳ Waiting for services to be ready..."
+          sleep 30
+          
+          echo "🔍 Checking deployment status..."
+          docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps
+          
+          echo "🏥 Performing health check..."
+          # Wait for API to be ready
+          for i in {1..10}; do
+            if curl -f -s "https://staging.api.barrels.gd/api/v1/utils/health-check/" > /dev/null; then
+              echo "✅ Staging API health check passed"
+              break
+            fi
+            echo "⏳ Health check attempt $i/10 - waiting 10 seconds..."
+            sleep 10
+          done
 
       - name: Show logs on failure
         if: failure()
         run: |
-          echo "=== docker ps ===" && docker ps -a || true
-          echo "=== prestart logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
-          echo "=== db logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
-          echo "=== api logs ===" && docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 api || true
-          echo "=== env (sanitized) ===" && sed -n '1,200p' "$ENV_FILE" | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
+          echo "🚨 STAGING DEPLOYMENT FAILED - DEBUGGING INFO"
+          echo "=============================================="
+          echo "=== Docker Container Status ==="
+          docker ps -a || true
+          echo ""
+          echo "=== Docker Compose Status ==="
+          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
+          echo ""
+          echo "=== Prestart Logs (last 200 lines) ==="
+          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
+          echo ""
+          echo "=== Database Logs (last 200 lines) ==="
+          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
+          echo ""
+          echo "=== API Logs (last 200 lines) ==="
+          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 api || true
+          echo ""
+          echo "=== Environment File (sanitized) ==="
+          sed -n '1,200p' "$ENV_FILE" | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
+          echo ""
+          echo "=== Network Status ==="
+          docker network ls || true
+          echo ""
+          echo "=== Volume Status ==="
+          docker volume ls | grep "${{ env.PROJECT_NAME }}" || true

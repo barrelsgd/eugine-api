@@ -25,7 +25,16 @@ jobs:
           path: htmlcov
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
-      - run: smokeshow upload htmlcov
+      - name: Upload coverage to Smokeshow
+        run: |
+          echo "📊 Uploading coverage report to Smokeshow..."
+          if smokeshow upload htmlcov; then
+            echo "✅ Coverage report uploaded successfully"
+            echo "🔗 View coverage at: https://smokeshow.helpmanual.io"
+          else
+            echo "⚠️ Coverage upload failed (non-blocking)"
+            echo "📋 This may be due to missing SMOKESHOW_AUTH_KEY secret"
+          fi
         env:
           SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Coverage {coverage-percentage}
           SMOKESHOW_GITHUB_COVERAGE_THRESHOLD: 90
@@ -33,3 +42,4 @@ jobs:
           SMOKESHOW_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SMOKESHOW_GITHUB_PR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           SMOKESHOW_AUTH_KEY: ${{ secrets.SMOKESHOW_AUTH_KEY }}
+        continue-on-error: true

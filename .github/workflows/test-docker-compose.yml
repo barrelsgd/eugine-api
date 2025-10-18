@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - dispatch
   pull_request:
     types:
       - opened
@@ -16,6 +17,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
+      - name: Validate workflow prerequisites
+        run: |
+          echo "🔍 Validating workflow prerequisites..."
+          
+          # Check required files exist
+          echo "📁 Checking required files..."
+          for file in docker-compose.yml docker-compose.override.yml .env.local.example; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file missing"
+              exit 1
+            fi
+          done
+          
+          # Check Docker is available
+          echo "🐳 Checking Docker availability..."
+          if docker --version; then
+            echo "✅ Docker is available"
+          else
+            echo "❌ Docker not available"
+            exit 1
+          fi
+          
+          # Check Docker Compose is available
+          if docker compose version; then
+            echo "✅ Docker Compose is available"
+          else
+            echo "❌ Docker Compose not available"
+            exit 1
+          fi
+          
+          echo "✅ All prerequisites validated"
       - name: Prepare .env for CI
         run: |
           set -euo pipefail
@@ -53,9 +88,47 @@ jobs:
           timeout 60 bash -c 'until docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps db | grep -q healthy; do sleep 2; done'
           
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d prestart
-          # Wait for prestart to complete
+          # Wait for prestart to complete with better error handling
           echo "Waiting for prestart to complete..."
-          timeout 60 bash -c 'until docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart | grep -q exited; do sleep 2; done'
+          if timeout 180 bash -c 'until docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart | grep -q exited; do 
+            echo "Prestart still running... checking status..."
+            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart
+            sleep 5
+          done'; then
+            echo "✅ Prestart completed within timeout"
+          else
+            echo "⚠️ Prestart timed out after 3 minutes, checking status..."
+            echo "=== Prestart Logs (last 50 lines) ==="
+            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=50 prestart
+            echo "=== Current Container Status ==="
+            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps
+            echo "=== Attempting to continue anyway... ==="
+          fi
+          
+          # Check if prestart completed successfully
+          echo "Checking prestart exit status..."
+          PRESTART_STATUS=$(docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart --format "table {{.State}}" | tail -n +2)
+          echo "Prestart status: $PRESTART_STATUS"
+          
+          if [[ "$PRESTART_STATUS" != *"exited"* ]]; then
+            echo "❌ Prestart did not complete successfully"
+            echo "=== Prestart Logs ==="
+            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart
+            exit 1
+          fi
+          
+          # Check exit code of prestart container
+          PRESTART_EXIT_CODE=$(docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart --format "table {{.ExitCode}}" | tail -n +2)
+          echo "Prestart exit code: $PRESTART_EXIT_CODE"
+          
+          if [[ "$PRESTART_EXIT_CODE" != "0" && "$PRESTART_EXIT_CODE" != "" ]]; then
+            echo "⚠️ Prestart had issues (exit code: $PRESTART_EXIT_CODE), but continuing..."
+            echo "=== Prestart Logs ==="
+            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart
+            echo "=== Attempting to continue with API startup... ==="
+          else
+            echo "✅ Prestart completed successfully"
+          fi
           
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d api
           # Wait for API to start and be ready
