@@ -8,13 +8,13 @@ on:
     branches:
       - main
       - master
-      - develop
+      - dev
       - dispatch
   pull_request:
     branches:
       - main
       - master
-      - develop
+      - dev
 
 # Cancel in-progress runs when a new workflow on the same PR is triggered
 concurrency:
@@ -55,12 +55,12 @@ jobs:
 
       - name: Run mypy (Type Checker)
         run: |
-          echo "🔍 Running type checker..."
+          echo "Checking Running type checker..."
           if uv run mypy src; then
-            echo "✅ Type checking passed"
+            echo "SUCCESS Type checking passed"
           else
-            echo "⚠️ Type checking found issues (non-blocking for now)"
-            echo "📋 Type issues summary:"
+            echo "WARNING Type checking found issues (non-blocking for now)"
+            echo "INFO Type issues summary:"
             uv run mypy src --show-error-codes || true
           fi
         continue-on-error: true  # Don't fail on type errors initially
@@ -150,24 +150,24 @@ jobs:
           FIRST_SUPERUSER_PASSWORD: changethis
         run: |
           echo "🧪 Running test suite with coverage..."
-          echo "📋 Test environment:"
+          echo "INFO Test environment:"
           echo "  - Database: $POSTGRES_SERVER:$POSTGRES_PORT/$POSTGRES_DB"
           echo "  - User: $POSTGRES_USER"
           echo "  - Superuser: $FIRST_SUPERUSER"
           
           # Run tests with detailed output
           if uv run coverage run --source=src -m pytest -v --tb=short; then
-            echo "✅ All tests passed"
+            echo "SUCCESS All tests passed"
           else
-            echo "❌ Some tests failed"
-            echo "📋 Test failure summary:"
+            echo "ERROR Some tests failed"
+            echo "INFO Test failure summary:"
             uv run pytest --tb=short -v --maxfail=5 || true
-            echo "📋 Failed test details:"
+            echo "INFO Failed test details:"
             uv run pytest --tb=long --maxfail=3 || true
             exit 1
           fi
           
-          echo "📊 Generating coverage report..."
+          echo "REPORT Generating coverage report..."
           uv run coverage report --show-missing
           uv run coverage xml
           uv run coverage html
@@ -180,9 +180,9 @@ jobs:
           # Extract coverage percentage for potential threshold checking
           COVERAGE_PCT=$(echo "$COVERAGE_LINE" | grep -o '[0-9]\+%' | head -1 | sed 's/%//')
           if [ -n "$COVERAGE_PCT" ]; then
-            echo "📊 Coverage percentage: $COVERAGE_PCT%"
+            echo "REPORT Coverage percentage: $COVERAGE_PCT%"
             if [ "$COVERAGE_PCT" -lt 80 ]; then
-              echo "⚠️ Warning: Coverage is below 80%"
+              echo "WARNING Warning: Coverage is below 80%"
             fi
           fi
 
@@ -224,24 +224,24 @@ jobs:
           
       - name: Validate Docker image
         run: |
-          echo "🔍 Validating Docker image..."
+          echo "Checking Validating Docker image..."
           # Load the image from tar file
           docker load -i /tmp/test-image.tar
           
           # Test that the image can be created and basic commands work
-          echo "📋 Testing image creation..."
+          echo "INFO Testing image creation..."
           CONTAINER_ID=$(docker create test-image:latest)
-          echo "✅ Container created successfully: $CONTAINER_ID"
+          echo "SUCCESS Container created successfully: $CONTAINER_ID"
           
           # Test basic image properties
-          echo "📋 Image information:"
+          echo "INFO Image information:"
           docker inspect test-image:latest --format='{{.Config.WorkingDir}}' || true
           docker inspect test-image:latest --format='{{.Config.ExposedPorts}}' || true
           
           # Clean up
           docker rm $CONTAINER_ID
           docker rmi test-image:latest
-          echo "✅ Docker image validation completed"
+          echo "SUCCESS Docker image validation completed"
 
   # Job 5: API Documentation Check
   docs:
@@ -313,7 +313,7 @@ jobs:
     steps:
       - name: Check all jobs
         run: |
-          echo "🔍 Checking CI job results..."
+          echo "Checking Checking CI job results..."
           echo "Quality: ${{ needs.quality.result }}"
           echo "Security: ${{ needs.security.result }}"
           echo "Tests: ${{ needs.test.result }}"
@@ -325,10 +325,10 @@ jobs:
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.docker.result }}" != "success" ] || \
              [ "${{ needs.docs.result }}" != "success" ]; then
-            echo "❌ One or more CI jobs failed"
+            echo "ERROR One or more CI jobs failed"
             echo "🚫 CI pipeline failed - deployment blocked"
             exit 1
           fi
-          echo "✅ All CI checks passed!"
+          echo "SUCCESS All CI checks passed!"
           echo "🚀 Ready for deployment"
 

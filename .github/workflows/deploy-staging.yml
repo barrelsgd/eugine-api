@@ -85,12 +85,12 @@ jobs:
           if [ ! -f "$ENV_FILE" ]; then
             echo "Provisioning $ENV_FILE from .env.local.example"
             if [ ! -f .env.local.example ]; then 
-              echo "❌ ERROR: .env.local.example is missing in the repository root"
+              echo "ERROR ERROR: .env.local.example is missing in the repository root"
               echo "📁 Available .env files:"
               ls -la .env* 2>/dev/null || echo "No .env files found"
               exit 1
             fi
-            echo "✅ Found .env.local.example, copying to $ENV_FILE"
+            echo "SUCCESS Found .env.local.example, copying to $ENV_FILE"
             cp .env.local.example "$ENV_FILE"
             chmod 600 "$ENV_FILE"
             # Normalize potential CRLF endings from template
@@ -195,16 +195,16 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           echo "🚀 Deploying to staging..."
-          echo "📋 Deployment configuration:"
+          echo "INFO Deployment configuration:"
           echo "  - Environment: $ENV_FILE"
           echo "  - Project: ${{ env.PROJECT_NAME }}"
           echo "  - Domain: staging.api.barrels.gd"
           
           # Deploy with error handling
           if docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d; then
-            echo "✅ Services started successfully"
+            echo "SUCCESS Services started successfully"
           else
-            echo "❌ Failed to start services"
+            echo "ERROR Failed to start services"
             echo "=== Service Status ==="
             docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
             echo "=== Service Logs ==="
@@ -215,7 +215,7 @@ jobs:
           echo "⏳ Waiting for services to be ready..."
           sleep 30
           
-          echo "🔍 Checking deployment status..."
+          echo "Checking Checking deployment status..."
           docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps
           
           echo "🏥 Performing health check..."
@@ -224,11 +224,11 @@ jobs:
           for i in {1..10}; do
             echo "Health check attempt $i/10..."
             if curl -f -s "https://staging.api.barrels.gd/api/v1/utils/health-check/" > /dev/null; then
-              echo "✅ Staging API health check passed"
+              echo "SUCCESS Staging API health check passed"
               HEALTH_CHECK_PASSED=true
               break
             else
-              echo "❌ Health check failed (attempt $i/10)"
+              echo "ERROR Health check failed (attempt $i/10)"
               if [ $i -eq 5 ]; then
                 echo "=== Mid-deployment debugging ==="
                 echo "=== API Logs (last 30 lines) ==="
@@ -242,7 +242,7 @@ jobs:
           done
           
           if [ "$HEALTH_CHECK_PASSED" = false ]; then
-            echo "❌ Health check failed after 10 attempts"
+            echo "ERROR Health check failed after 10 attempts"
             echo "=== Final debugging information ==="
             echo "=== All Service Logs ==="
             docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=100 || true

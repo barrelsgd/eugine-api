@@ -27,13 +27,13 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
       - name: Upload coverage to Smokeshow
         run: |
-          echo "📊 Uploading coverage report to Smokeshow..."
+          echo "REPORT Uploading coverage report to Smokeshow..."
           if smokeshow upload htmlcov; then
-            echo "✅ Coverage report uploaded successfully"
+            echo "SUCCESS Coverage report uploaded successfully"
             echo "🔗 View coverage at: https://smokeshow.helpmanual.io"
           else
-            echo "⚠️ Coverage upload failed (non-blocking)"
-            echo "📋 This may be due to missing SMOKESHOW_AUTH_KEY secret"
+            echo "WARNING Coverage upload failed (non-blocking)"
+            echo "INFO This may be due to missing SMOKESHOW_AUTH_KEY secret"
           fi
         env:
           SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Coverage {coverage-percentage}
