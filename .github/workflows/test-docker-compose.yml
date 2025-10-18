@@ -20,15 +20,15 @@ jobs:
         
       - name: Validate workflow prerequisites
         run: |
-          echo "🔍 Validating workflow prerequisites..."
+          echo "Checking Validating workflow prerequisites..."
           
           # Check required files exist
           echo "📁 Checking required files..."
           for file in docker-compose.yml docker-compose.override.yml .env.local.example; do
             if [ -f "$file" ]; then
-              echo "✅ $file exists"
+              echo "SUCCESS $file exists"
             else
-              echo "❌ $file missing"
+              echo "ERROR $file missing"
               exit 1
             fi
           done
@@ -36,38 +36,38 @@ jobs:
           # Check Docker is available
           echo "🐳 Checking Docker availability..."
           if docker --version; then
-            echo "✅ Docker is available"
+            echo "SUCCESS Docker is available"
           else
-            echo "❌ Docker not available"
+            echo "ERROR Docker not available"
             exit 1
           fi
           
           # Check Docker Compose is available
           if docker compose version; then
-            echo "✅ Docker Compose is available"
+            echo "SUCCESS Docker Compose is available"
           else
-            echo "❌ Docker Compose not available"
+            echo "ERROR Docker Compose not available"
             exit 1
           fi
           
-          echo "✅ All prerequisites validated"
+          echo "SUCCESS All prerequisites validated"
       - name: Prepare .env for CI
         run: |
           set -euo pipefail
-          echo "🔍 Checking for environment template files..."
+          echo "Checking Checking for environment template files..."
           if [ ! -f .env.local.example ]; then
-            echo "❌ ERROR: .env.local.example not found in repository"
+            echo "ERROR ERROR: .env.local.example not found in repository"
             echo "📁 Available .env files:"
             ls -la .env* 2>/dev/null || echo "No .env files found"
             exit 1
           fi
-          echo "✅ Found .env.local.example, creating .env for CI..."
+          echo "SUCCESS Found .env.local.example, creating .env for CI..."
           cp .env.local.example .env
           sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=local/' .env
           grep -q '^SECRET_KEY=' .env || echo 'SECRET_KEY=changethis' >> .env
           grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
           if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
-          echo "✅ .env file prepared successfully"
+          echo "SUCCESS .env file prepared successfully"
           
           # Extract PROJECT_NAME for consistent container naming
           PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2- | tr -d '\r' || echo "fast-back")
@@ -95,9 +95,9 @@ jobs:
             docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart
             sleep 5
           done'; then
-            echo "✅ Prestart completed within timeout"
+            echo "SUCCESS Prestart completed within timeout"
           else
-            echo "⚠️ Prestart timed out after 3 minutes, checking status..."
+            echo "WARNING Prestart timed out after 3 minutes, checking status..."
             echo "=== Prestart Logs (last 50 lines) ==="
             docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=50 prestart
             echo "=== Current Container Status ==="
@@ -107,10 +107,10 @@ jobs:
           
           # Check if prestart completed successfully by examining logs
           echo "Checking prestart completion status..."
-          if docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart | grep -q "✅ Prestart script completed successfully!"; then
-            echo "✅ Prestart completed successfully based on logs"
+          if docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart | grep -q "Prestart script completed successfully"; then
+            echo "SUCCESS Prestart completed successfully based on logs"
           else
-            echo "❌ Prestart did not complete successfully"
+            echo "ERROR Prestart did not complete successfully"
             echo "=== Prestart Logs ==="
             docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart
             echo "=== Container Status ==="
@@ -123,9 +123,9 @@ jobs:
           echo "Prestart container state: $PRESTART_STATUS"
           
           if [[ "$PRESTART_STATUS" == *"exited"* ]]; then
-            echo "✅ Prestart container exited properly"
+            echo "SUCCESS Prestart container exited properly"
           else
-            echo "⚠️ Prestart container state: $PRESTART_STATUS (may be expected in some cases)"
+            echo "WARNING Prestart container state: $PRESTART_STATUS (may be expected in some cases)"
           fi
           
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d api
@@ -147,10 +147,10 @@ jobs:
           for i in {1..10}; do
             echo "Attempt $i/10..."
             if curl -f -s http://localhost:8000/api/v1/utils/health-check/; then
-              echo "✅ API health check successful!"
+              echo "SUCCESS API health check successful!"
               exit 0
             else
-              echo "❌ Health check failed (attempt $i/10), waiting 5 seconds..."
+              echo "ERROR Health check failed (attempt $i/10), waiting 5 seconds..."
               # Show API logs on failure for debugging
               if [ $i -eq 5 ]; then
                 echo "=== API Logs (last 20 lines) - Mid-attempt debugging ==="
@@ -159,7 +159,7 @@ jobs:
               sleep 5
             fi
           done
-          echo "❌ All health check attempts failed"
+          echo "ERROR All health check attempts failed"
           echo "=== Final debugging information ==="
           echo "=== Container Status ==="
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps || true
@@ -173,7 +173,7 @@ jobs:
         run: |
           echo "🧹 Cleaning up Docker resources..."
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans || true
-          echo "✅ Cleanup completed"
+          echo "SUCCESS Cleanup completed"
           
       - name: Show detailed logs on failure
         if: failure()
