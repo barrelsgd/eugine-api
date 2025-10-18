@@ -18,7 +18,7 @@ def test_health_check(client: TestClient) -> None:
 
 @patch("src.utils.router.send_email")
 def test_test_email(mock_send_email, client: TestClient, superuser_token_headers: dict[str, str]) -> None:
-    """Test email testing endpoint."""
+    """Test email testing endpoint.."""
     # Mock the send_email function to avoid actual email sending
     mock_send_email.return_value = None
     
