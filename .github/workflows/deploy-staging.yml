@@ -9,6 +9,7 @@ jobs:
   verify_checks:
     name: Verify checks for staging commit
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       checks: read
       contents: read
@@ -67,8 +68,11 @@ jobs:
     runs-on:
       - self-hosted
       - staging
+    timeout-minutes: 20
     environment:
       name: staging
+    permissions:
+      contents: read
     env:
       ENV_FILE: /home/github/.config/eugine-api/staging.env  # stable path outside workspace
     steps:

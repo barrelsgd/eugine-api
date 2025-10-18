@@ -1,36 +1,92 @@
-# GitHub Labeler Configuration
-# Automatically applies labels to PRs based on changed files
+# Labeler configuration for automatic PR labeling
+# Based on file paths and changes
 
-docs:
-  - changed-files:
-    - '**/*.md'
-    - '!scripts/**'
-    - '!.github/**'
-
-internal:
-  - changed-files:
-    - '.github/**'
-    - 'scripts/**'
-    - '.gitignore'
-    - '.pre-commit-config.yaml'
-
+# Backend/API changes
 backend:
-  - changed-files:
-    - 'src/**'
-    - 'alembic/**'
-    - 'pyproject.toml'
-    - 'uv.lock'
-    - 'Dockerfile*'
-    - 'docker-compose*.yml'
+  - src/**/*
+  - alembic/**/*
+  - pyproject.toml
+  - Dockerfile*
+  - docker-compose*.yml
+  - scripts/**/*.py
+  - scripts/**/*.sh
 
-tests:
-  - changed-files:
-    - 'tests/**'
-    - '**/*test*.py'
-    - '**/*_test.py'
+# Frontend changes (if applicable)
+frontend:
+  - public/**/*
+  - src/**/*.js
+  - src/**/*.jsx
+  - src/**/*.ts
+  - src/**/*.tsx
+  - package.json
+  - package-lock.json
+  - yarn.lock
 
+# Documentation changes
+documentation:
+  - README.md
+  - *.md
+  - docs/**/*
+  - .github/**/*.md
+
+# Configuration changes
+configuration:
+  - .env*
+  - .github/workflows/**/*
+  - .github/**/*.yml
+  - .github/**/*.yaml
+  - docker-compose*.yml
+  - Dockerfile*
+
+# Database changes
+database:
+  - alembic/**/*
+  - src/models.py
+  - src/database.py
+
+# Testing changes
+testing:
+  - tests/**/*
+  - conftest.py
+  - pytest.ini
+  - .github/workflows/test*.yml
+
+# Security changes
+security:
+  - src/auth/**/*
+  - src/security.py
+  - .github/workflows/security*.yml
+
+# Dependencies
 dependencies:
-  - changed-files:
-    - 'pyproject.toml'
-    - 'uv.lock'
-    - 'requirements*.txt'
+  - pyproject.toml
+  - requirements*.txt
+  - package.json
+  - package-lock.json
+  - yarn.lock
+
+# CI/CD changes
+ci-cd:
+  - .github/workflows/**/*
+  - .github/**/*.yml
+  - .github/**/*.yaml
+
+# Bug fixes
+bug:
+  - Any changes that fix issues
+
+# New features
+enhancement:
+  - Any changes that add new functionality
+
+# Breaking changes
+breaking:
+  - Changes that break existing functionality
+
+# Performance improvements
+performance:
+  - Changes that improve performance
+
+# Refactoring
+refactor:
+  - Code changes that neither fix bugs nor add features

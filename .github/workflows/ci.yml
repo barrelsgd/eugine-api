@@ -6,13 +6,11 @@ name: CI
 on:
   push:
     branches:
-      - main
       - master
       - dev
       - dispatch
   pull_request:
     branches:
-      - main
       - master
       - dev
 
@@ -23,12 +21,16 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  UV_CACHE_DIR: ~/.cache/uv
 
 jobs:
   # Job 1: Code Quality Checks
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -69,6 +71,10 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     
     steps:
       - name: Checkout code
@@ -93,6 +99,17 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      POSTGRES_SERVER: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: changethis
+      POSTGRES_DB: app
+      FIRST_SUPERUSER: admin@example.com
+      FIRST_SUPERUSER_PASSWORD: changethis
+      SECRET_KEY: changethis
+      ENVIRONMENT: test
     
     services:
       postgres:
@@ -203,6 +220,7 @@ jobs:
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     
     steps:
       - name: Checkout code
@@ -247,6 +265,17 @@ jobs:
   docs:
     name: API Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      POSTGRES_SERVER: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: changethis
+      POSTGRES_DB: app
+      FIRST_SUPERUSER: admin@example.com
+      FIRST_SUPERUSER_PASSWORD: changethis
+      SECRET_KEY: changethis
+      ENVIRONMENT: test
     
     services:
       postgres:
