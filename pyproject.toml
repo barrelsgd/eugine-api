@@ -1,5 +1,5 @@
 [project]
-name = "app"
+name = "fast-back"
 version = "0.1.0"
 description = ""
 requires-python = ">=3.10,<4.0"
@@ -79,6 +79,13 @@ keep-runtime-typing = true
 [tool.coverage.run]
 source = ["src"]
 dynamic_context = "test_function"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+norecursedirs = ["scripts", ".git", ".tox", "dist", "build"]
 
 [tool.coverage.report]
 show_missing = true

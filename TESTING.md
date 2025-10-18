@@ -1,8 +1,8 @@
-# Testing & Pre-Deployment Guide
+# Testing Guide
 
-This guide covers all testing and validation steps before deploying your FastAPI application.
+Comprehensive testing strategies, pre-deployment checks, and quality assurance for the FastAPI backend.
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Run All Pre-Deployment Checks
 
@@ -22,7 +22,7 @@ chmod +x scripts/pre-deploy.sh
 bash scripts/pre-deploy.sh
 ```
 
-## Individual Test Commands
+## 🧪 Individual Test Commands
 
 ### 1. Code Formatting
 
@@ -147,7 +147,7 @@ docker compose exec api uv pip check
 docker compose exec api uv pip install --upgrade -r requirements.txt
 ```
 
-## Pre-Deployment Checklist
+## 📋 Pre-Deployment Checklist
 
 Before deploying to production, ensure:
 
@@ -190,7 +190,7 @@ Before deploying to production, ensure:
 - [ ] Authentication works correctly
 - [ ] Rate limiting is configured (if needed)
 
-## Testing Best Practices
+## 🧪 Testing Best Practices
 
 ### Writing Tests
 
@@ -262,7 +262,7 @@ def superuser_token_headers(client: TestClient) -> dict:
     return {"Authorization": f"Bearer {tokens['access_token']}"}
 ```
 
-## Continuous Integration
+## 🔄 Continuous Integration
 
 ### GitHub Actions Example
 
@@ -282,7 +282,39 @@ jobs:
           ./scripts/pre-deploy.sh
 ```
 
-## Troubleshooting
+## 🚀 Quick API Tests
+
+### Quick Test Script
+
+**Fast API validation tests:**
+
+```bash
+docker compose exec api python scripts/quick_test.py
+```
+
+**7 Tests:**
+1. ✅ API Health Check
+2. ✅ Router Structure (6 tag groups)
+3. ✅ Enhanced Documentation
+4. ✅ User Registration
+5. ✅ Login Flow
+6. ✅ Authenticated Endpoints
+7. ✅ Constants Usage
+
+**Perfect for:**
+- Quick validation after changes
+- CI/CD pipelines
+- Deployment verification
+
+### Full Test Suite
+
+```bash
+./scripts/dev.sh test-cov
+```
+
+Generates coverage report in `htmlcov/index.html`
+
+## 🛠️ Troubleshooting
 
 ### Tests Failing
 
@@ -327,7 +359,7 @@ docker compose up -d
 docker compose exec api uv run alembic upgrade head
 ```
 
-## Performance Testing
+## 📊 Performance Testing
 
 ### Load Testing with Locust
 
@@ -352,7 +384,7 @@ class APIUser(HttpUser):
 locust -f locustfile.py --host=http://localhost:8000
 ```
 
-## Monitoring
+## 📈 Monitoring
 
 ### Check Application Metrics
 
@@ -367,18 +399,9 @@ docker compose exec db psql -U postgres -c "SELECT count(*) FROM pg_stat_activit
 docker stats
 ```
 
-## Additional Resources
+## 🎯 Common Testing Workflows
 
-- [FastAPI Testing Documentation](https://fastapi.tiangolo.com/tutorial/testing/)
-- [Pytest Documentation](https://docs.pytest.org/)
-- [Ruff Documentation](https://docs.astral.sh/ruff/)
-- [MyPy Documentation](https://mypy.readthedocs.io/)
-- [Alembic Documentation](https://alembic.sqlalchemy.org/)
-
-## Summary
-
-**Quick commands for daily development:**
-
+### Daily Development Testing
 ```bash
 # Format code
 ./scripts/format.sh
@@ -396,9 +419,152 @@ docker compose exec api uv run alembic revision --autogenerate -m "description"
 docker compose exec api uv run alembic upgrade head
 ```
 
+### Before Every Deployment
+```bash
+# Run code quality checks
+./scripts/format.sh
+./scripts/lint.sh
+
+# Run tests
+./scripts/dev.sh test-cov
+
+# Quick API test
+docker compose exec api python scripts/quick_test.py
+```
+
+If all checks pass ✅, you're ready to deploy! 🚀
+
+## 📚 Additional Resources
+
+- [FastAPI Testing Documentation](https://fastapi.tiangolo.com/tutorial/testing/)
+- [Pytest Documentation](https://docs.pytest.org/)
+- [Ruff Documentation](https://docs.astral.sh/ruff/)
+- [MyPy Documentation](https://mypy.readthedocs.io/)
+- [Alembic Documentation](https://alembic.sqlalchemy.org/)
+
+## 📊 Test Coverage Goals
+
+### Minimum Coverage Targets
+- **Unit Tests**: > 80%
+- **Integration Tests**: > 70%
+- **API Endpoints**: 100%
+- **Critical Paths**: 100%
+
+### Coverage Reports
+```bash
+# Generate HTML coverage report
+docker compose exec api uv run pytest --cov=src --cov-report=html
+
+# View coverage report
+open htmlcov/index.html
+```
+
+## 🔍 Test Categories
+
+### 1. Unit Tests
+- Test individual functions and methods
+- Mock external dependencies
+- Fast execution
+- High coverage
+
+### 2. Integration Tests
+- Test component interactions
+- Use real database (test instance)
+- Test API endpoints
+- Verify data flow
+
+### 3. End-to-End Tests
+- Test complete user workflows
+- Test authentication flows
+- Test error scenarios
+- Verify business logic
+
+### 4. Performance Tests
+- Load testing
+- Stress testing
+- Memory usage
+- Response times
+
+## 🎯 Testing Checklist
+
+### Before Committing
+- [ ] All tests pass locally
+- [ ] Code is formatted
+- [ ] No linting errors
+- [ ] Type checking passes
+- [ ] New tests added for new features
+
+### Before Deploying
+- [ ] Full test suite passes
+- [ ] Pre-deployment checks pass
+- [ ] Database migrations tested
+- [ ] Security checks pass
+- [ ] Performance tests pass
+
+### After Deploying
+- [ ] Health checks pass
+- [ ] Smoke tests pass
+- [ ] Monitoring alerts configured
+- [ ] Rollback plan ready
+
+## 🚨 Emergency Testing
+
+### Quick Health Check
+```bash
+# Test API is running
+curl http://localhost:8000/api/v1/utils/health-check/
+
+# Should return: true
+```
+
+### Test Email System
+```bash
+# Send test email
+curl -X POST "http://localhost:8000/api/v1/utils/test-email?email_to=test@example.com" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Check email at:
+open http://localhost:1080
+```
+
+### Test Authentication
+```bash
+# Login
+curl -X POST "http://localhost:8000/api/v1/login/access-token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin@example.com&password=changethis"
+
+# Returns JWT token
+```
+
+## 📋 Summary
+
+**Quick commands for daily development:**
+
+```bash
+# Format code
+./scripts/format.sh
+
+# Run tests
+./scripts/dev.sh test-cov
+
+# Check code quality
+./scripts/lint.sh
+
+# Create migration
+./scripts/dev.sh migration "description"
+
+# Apply migrations
+./scripts/dev.sh migrate
+```
+
 **Before every deployment:**
 ```bash
-./scripts/pre-deploy.sh
+# Run all checks
+./scripts/format.sh
+./scripts/lint.sh
+./scripts/dev.sh test-cov
+docker compose exec api python scripts/quick_test.py
 ```
 
 If all checks pass ✅, you're ready to deploy! 🚀

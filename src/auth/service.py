@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from sqlmodel import Session, select
@@ -65,6 +66,12 @@ def create_role(*, session: Session, role_in: RoleCreate) -> Role:
     return db_role
 
 
+def get_role(*, session: Session, role_id: uuid.UUID) -> Role | None:
+    """Get a role by ID."""
+    statement = select(Role).where(Role.id == role_id)
+    return session.exec(statement).first()
+
+
 def get_roles(*, session: Session, skip: int = 0, limit: int = 100) -> list[Role]:
     """Get all roles."""
     statement = select(Role).offset(skip).limit(limit)
@@ -81,6 +88,12 @@ def create_permission(
     session.commit()
     session.refresh(db_permission)
     return db_permission
+
+
+def get_permission(*, session: Session, permission_id: uuid.UUID) -> Permission | None:
+    """Get a permission by ID."""
+    statement = select(Permission).where(Permission.id == permission_id)
+    return session.exec(statement).first()
 
 
 def get_permissions(
@@ -100,8 +113,10 @@ __all__ = [
     "verify_password",
     "create_access_token",
     "create_role",
+    "get_role",
     "get_roles",
     "create_permission",
+    "get_permission",
     "get_permissions",
     "Role",
     "Permission",

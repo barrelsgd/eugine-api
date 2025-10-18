@@ -84,6 +84,9 @@ services:
         - path: ./scripts
           action: sync
           target: /app/scripts
+        - path: ./tests
+          action: sync
+          target: /app/tests
         - path: ./pyproject.toml
           action: rebuild
     volumes:
@@ -91,6 +94,7 @@ services:
       - ./alembic:/app/alembic
       - ./email-templates:/app/email-templates
       - ./scripts:/app/scripts
+      - ./tests:/app/tests
       - ./alembic.ini:/app/alembic.ini
       - ./pyproject.toml:/app/pyproject.toml
     environment:

@@ -6,13 +6,14 @@ from sqlmodel import Session
 from src.config import settings
 from src.auth.utils import verify_password
 from src.auth.service import create_user
-from src.auth.models import UserCreate
+from src.auth.schemas import UserCreate
+from src.email import generate_password_reset_token
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
-from app.utils import generate_password_reset_token
 
 
 def test_get_access_token(client: TestClient) -> None:
+    """Test successful login with correct credentials."""
     login_data = {
         "username": settings.FIRST_SUPERUSER,
         "password": settings.FIRST_SUPERUSER_PASSWORD,
@@ -25,6 +26,7 @@ def test_get_access_token(client: TestClient) -> None:
 
 
 def test_get_access_token_incorrect_password(client: TestClient) -> None:
+    """Test login failure with incorrect password."""
     login_data = {
         "username": settings.FIRST_SUPERUSER,
         "password": "incorrect",
@@ -36,6 +38,7 @@ def test_get_access_token_incorrect_password(client: TestClient) -> None:
 def test_use_access_token(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Test token validation endpoint."""
     r = client.post(
         f"{settings.API_V1_STR}/login/test-token",
         headers=superuser_token_headers,
@@ -48,11 +51,12 @@ def test_use_access_token(
 def test_recovery_password(
     client: TestClient, normal_user_token_headers: dict[str, str]
 ) -> None:
+    """Test password recovery email sending."""
     with (
-        patch("app.utils.send_email", return_value=None),
+        patch("src.email.send_email", return_value=None),
         patch("smtplib.SMTP") as mock_smtp,
-        patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
-        patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
+        patch("src.config.settings.SMTP_HOST", "smtp.example.com"),
+        patch("src.config.settings.SMTP_USER", "admin@example.com"),
     ):
         # Configure the mock SMTP server
         mock_server = mock_smtp.return_value
@@ -67,9 +71,10 @@ def test_recovery_password(
         assert r.json() == {"message": "Password recovery email sent"}
 
 
-def test_recovery_password_user_not_exits(
+def test_recovery_password_user_not_exists(
     client: TestClient, normal_user_token_headers: dict[str, str]
 ) -> None:
+    """Test password recovery for non-existent user."""
     email = "jVgQr@example.com"
     r = client.post(
         f"{settings.API_V1_STR}/password-recovery/{email}",
@@ -79,14 +84,17 @@ def test_recovery_password_user_not_exits(
 
 
 def test_reset_password(client: TestClient, db: Session) -> None:
+    """Test password reset with valid token."""
     email = random_email()
     password = random_lower_string()
     new_password = random_lower_string()
 
     user_create = UserCreate(
         email=email,
-        full_name="Test User",
+        username=email.split('@')[0],
         password=password,
+        first_name="Test",
+        last_name="User",
         is_active=True,
         is_superuser=False,
     )
@@ -111,6 +119,7 @@ def test_reset_password(client: TestClient, db: Session) -> None:
 def test_reset_password_invalid_token(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Test password reset with invalid token."""
     data = {"new_password": "changethis", "token": "invalid"}
     r = client.post(
         f"{settings.API_V1_STR}/reset-password/",

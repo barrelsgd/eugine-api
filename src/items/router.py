@@ -15,9 +15,6 @@ from .constants import (
 )
 from .models import Item
 from .schemas import (
-    Item as ItemSchema,
-)
-from .schemas import (
     ItemCreate,
     ItemImageCreate,
     ItemImagePublic,
@@ -74,7 +71,8 @@ def read_items(
         items = session.exec(statement).all()
 
     return ItemsPublic(
-        data=[ItemSchema.model_validate(item) for item in items], count=count
+        data=[ItemPublic.model_validate(item, from_attributes=True) for item in items],
+        count=count,
     )
 
 

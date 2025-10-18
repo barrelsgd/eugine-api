@@ -24,8 +24,15 @@ class UserRegister(BaseModel):
 
 
 # Properties to receive via API on update, all are optional
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    username: str | None = Field(default=None, min_length=3, max_length=255)
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    middle_name: str | None = Field(default=None, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
     password: str | None = None
+    is_active: bool | None = None
+    is_superuser: bool | None = None
 
 
 class UserUpdateMe(BaseModel):
@@ -34,8 +41,6 @@ class UserUpdateMe(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     middle_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
-    # Keep full_name for backward compatibility
-    full_name: str | None = None
 
 
 class UpdatePassword(BaseModel):
@@ -48,6 +53,7 @@ class UserPublic(UserBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    full_name: str  # Computed field from first_name and last_name
 
 
 class UsersPublic(BaseModel):

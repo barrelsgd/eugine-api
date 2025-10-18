@@ -87,12 +87,12 @@ function migration() {
 
 function test() {
     echo -e "${GREEN}Running tests...${NC}"
-    docker compose exec api uv run pytest
+    docker compose exec api uv run pytest tests/
 }
 
 function test_cov() {
     echo -e "${GREEN}Running tests with coverage...${NC}"
-    docker compose exec api uv run pytest --cov=src --cov-report=html --cov-report=term
+    docker compose exec api uv run pytest tests/ --cov=src --cov-report=html --cov-report=term
     echo -e "${GREEN}Coverage report generated in htmlcov/index.html${NC}"
 }
 

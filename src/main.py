@@ -30,18 +30,15 @@ if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
     sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
 
 # Configure app settings based on environment
-# Hide API docs in production/staging for security
+# Show API docs in all environments
 app_configs = {
     "title": settings.PROJECT_NAME,
+    "version": "1.0.0",
     "generate_unique_id_function": custom_generate_unique_id,
+    "openapi_url": f"{settings.API_V1_STR}/openapi.json",
+    "docs_url": "/swagger",  # Use custom path
+    "redoc_url": "/redoc",
 }
-
-# Only show OpenAPI docs in local development
-if settings.ENVIRONMENT == "local":
-    app_configs["openapi_url"] = f"{settings.API_V1_STR}/openapi.json"
-else:
-    # Setting openapi_url to None disables /docs and /redoc endpoints
-    app_configs["openapi_url"] = None
 
 # Extract values with proper typing
 openapi_url: str | None = cast(str | None, app_configs.get("openapi_url"))

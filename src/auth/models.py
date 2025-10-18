@@ -18,8 +18,6 @@ class UserBase(SQLModel):
     last_name: str = Field(max_length=100)
     is_active: bool = True
     is_superuser: bool = False
-    # Keep full_name for backward compatibility
-    full_name: str | None = Field(default=None, max_length=255)
 
 
 # Database model, database table inferred from class name
@@ -38,6 +36,18 @@ class User(UserBase, table=True):
         back_populates="users", sa_relationship_kwargs={"secondary": "user_role"}
     )
     sessions: list["Session"] = Relationship(back_populates="user", cascade_delete=True)
+
+    @property
+    def full_name(self) -> str:
+        """Compute full name from first_name and last_name."""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        else:
+            return ""
 
 
 # User Image model

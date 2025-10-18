@@ -45,7 +45,7 @@ from src.email import generate_new_account_email, send_email
 from src.items.models import Item
 from src.models import Message
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/auth/users", tags=["users"])
 
 
 @router.get(

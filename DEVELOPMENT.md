@@ -1,9 +1,34 @@
-# FastAPI Project - Development Guide
+# Development Guide
 
-This project follows [FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices) structure with [FastAPI Full-Stack Template](https://github.com/fastapi/full-stack-fastapi-template) development workflow.
+Complete guide for developing with the FastAPI backend, including Docker setup, scripts, and best practices.
 
-## Quick Start with Docker Compose Watch
+## 🚀 Quick Start
 
+### First Time Setup
+```bash
+# 1. Copy environment file
+cp .env.local.example .env
+
+# 2. Edit .env with your settings
+nano .env
+
+# 3. Start services
+docker compose up -d
+
+# 4. Verify everything works
+docker compose exec api python scripts/quick_test.py
+```
+
+### Access Your Application
+- **API Documentation**: http://localhost:8000/docs
+- **API (Alternative Docs)**: http://localhost:8000/redoc
+- **Database UI (Adminer)**: http://localhost:8080
+- **Email Testing (MailCatcher)**: http://localhost:1080
+- **Traefik Dashboard**: http://localhost:8090
+
+## 🐳 Docker Development
+
+### Docker Compose Watch
 Start the local stack with hot-reload enabled:
 
 ```bash
@@ -16,37 +41,26 @@ This command will:
 - Restart the API server when you change Python files
 - Rebuild the container when `pyproject.toml` changes
 
-## Available Services
-
-Once running, access these URLs:
-
-- **Backend API**: http://localhost:8000
-- **API Documentation (Swagger)**: http://localhost:8000/docs
-- **API Documentation (ReDoc)**: http://localhost:8000/redoc
-- **Adminer (Database UI)**: http://localhost:8080
-- **MailCatcher (Email Testing)**: http://localhost:1080
-- **Traefik Dashboard**: http://localhost:8090
-
-## Docker Compose Watch Configuration
+### Docker Compose Watch Configuration
 
 The watch mode is configured with:
 
-### Sync Actions (Instant Updates)
+#### Sync Actions (Instant Updates)
 - `./src` → `/app/src` - Python source code
 - `./alembic` → `/app/alembic` - Database migrations
 - `./templates` → `/app/templates` - Email templates
 - `./scripts` → `/app/scripts` - Utility scripts
 
-### Rebuild Actions (Container Restart)
+#### Rebuild Actions (Container Restart)
 - `./pyproject.toml` - When dependencies change
 
-### Ignored Files
+#### Ignored Files
 The watch ignores:
 - `__pycache__/`
 - `*.pyc`, `*.pyo`, `*.pyd`
 - `.pytest_cache/`
 
-## Development Workflow
+## 🛠️ Development Workflow
 
 ### Making Code Changes
 
@@ -80,15 +94,107 @@ Follow logs in real-time:
 docker compose logs -f api
 ```
 
-### Database Management
+## 📜 Development Scripts
 
-Access database via Adminer:
+### Main Development Tool (`dev.sh`)
+**Your primary development command center.**
+
+```bash
+./scripts/dev.sh [command]
+```
+
+**Commands:**
+- `start` - Start all services with watch mode
+- `stop` - Stop all services
+- `restart` - Restart all services
+- `logs` - Show logs from all services
+- `logs-api` - Show API logs only
+- `logs-db` - Show database logs only
+- `shell` - Open shell in API container
+- `db-shell` - Open PostgreSQL shell
+- `migrate` - Run database migrations
+- `migration "message"` - Create new migration
+- `test` - Run tests
+- `test-cov` - Run tests with coverage
+- `clean` - Stop and remove all containers and volumes
+- `rebuild` - Rebuild containers from scratch
+- `status` - Show status of all services
+
+**Examples:**
+```bash
+./scripts/dev.sh start          # Start development
+./scripts/dev.sh logs-api       # Watch API logs
+./scripts/dev.sh shell          # Open shell in container
+./scripts/dev.sh migration "add user roles"  # Create migration
+./scripts/dev.sh test-cov       # Run tests with coverage
+```
+
+### Code Quality Scripts
+
+#### Format Code
+```bash
+./scripts/format.sh
+```
+- Fixes auto-fixable linting issues
+- Formats all code in `src/` and `scripts/`
+- Uses Ruff for fast, modern formatting
+
+#### Check Code Quality
+```bash
+./scripts/lint.sh
+```
+**Checks:**
+- ✅ Type checking with `mypy`
+- ✅ Linting with `ruff check`
+- ✅ Format checking with `ruff format --check`
+
+### Testing Scripts
+
+#### Quick API Test
+```bash
+docker compose exec api python scripts/quick_test.py
+```
+
+**7 Tests:**
+1. ✅ API Health Check
+2. ✅ Router Structure (6 tag groups)
+3. ✅ Enhanced Documentation
+4. ✅ User Registration
+5. ✅ Login Flow
+6. ✅ Authenticated Endpoints
+7. ✅ Constants Usage
+
+**Perfect for:**
+- Quick validation after changes
+- CI/CD pipelines
+- Deployment verification
+
+#### Database Seeding
+```bash
+python scripts/seed_data.py
+```
+
+**What it creates:**
+- 5 test users (testuser0@example.com to testuser4@example.com)
+- 3 test items per user
+- Password for all: `testpass123`
+
+**Perfect for:**
+- Development testing
+- Demo environments
+- Frontend development
+
+## 🗄️ Database Management
+
+### Access Database via Adminer
 - URL: http://localhost:8080
 - System: PostgreSQL
 - Server: db
 - Username: From `POSTGRES_USER` in `.env`
 - Password: From `POSTGRES_PASSWORD` in `.env`
 - Database: From `POSTGRES_DB` in `.env`
+
+### Database Migrations
 
 Run migrations:
 ```bash
@@ -100,13 +206,29 @@ Create new migration:
 docker compose exec api uv run alembic revision --autogenerate -m "description"
 ```
 
-### Email Testing
+### Database Operations
+
+**Create migration:**
+```bash
+docker compose exec api uv run alembic revision --autogenerate -m "add users table"
+```
+
+**Apply migrations:**
+```bash
+docker compose exec api uv run alembic upgrade head
+```
+
+**Access database:**
+- UI: http://localhost:8080
+- CLI: `docker compose exec db psql -U app -d app`
+
+## 📧 Email Testing
 
 All emails sent by the API are caught by MailCatcher:
 - View emails at: http://localhost:1080
 - SMTP configured automatically in `docker-compose.override.yml`
 
-## Local Development Without Docker
+## 🌐 Local Development Without Docker
 
 You can also run services locally while keeping others in Docker.
 
@@ -130,7 +252,7 @@ docker compose stop db
 
 Then configure your local PostgreSQL connection in `.env`.
 
-## Using localhost.tiangolo.com for Subdomain Testing
+## 🌍 Using localhost.tiangolo.com for Subdomain Testing
 
 To test subdomain routing locally (like production):
 
@@ -150,18 +272,22 @@ docker compose watch
 
 The domain `localhost.tiangolo.com` automatically resolves to `127.0.0.1`.
 
-## Project Structure (FastAPI Best Practices)
+## 🏗️ Project Structure (FastAPI Best Practices)
 
 ```
 fast-back/
 ├── src/                          # Main application code
 │   ├── auth/                     # Authentication module
-│   │   ├── router.py            # Auth endpoints
-│   │   ├── schemas.py           # Pydantic models
-│   │   ├── models.py            # Database models
-│   │   ├── service.py           # Business logic
-│   │   ├── dependencies.py      # Route dependencies
-│   │   └── utils.py             # Helper functions
+│   │   ├── routers/              # Split auth routers
+│   │   │   ├── login.py          # Login endpoints
+│   │   │   ├── users.py          # User management
+│   │   │   ├── roles.py          # Role management
+│   │   │   └── permissions.py    # Permission management
+│   │   ├── constants.py          # Auth messages
+│   │   ├── models.py             # User, Role, Permission models
+│   │   ├── schemas.py            # Pydantic schemas
+│   │   ├── service.py            # Business logic
+│   │   └── dependencies.py       # Auth dependencies
 │   ├── items/                    # Items module
 │   │   └── ...                  # Same structure
 │   ├── config.py                # Global configuration
@@ -181,7 +307,115 @@ fast-back/
 └── .env                        # Environment variables
 ```
 
-## Troubleshooting
+## 🔧 Environment Variables
+
+Key variables in `.env`:
+
+- `ENVIRONMENT`: local | staging | production
+- `DOMAIN`: localhost (or localhost.tiangolo.com)
+- `POSTGRES_*`: Database credentials
+- `SECRET_KEY`: JWT secret (generate with `openssl rand -base64 32`)
+- `FIRST_SUPERUSER`: Admin email
+- `FIRST_SUPERUSER_PASSWORD`: Admin password
+
+## 🧪 Testing
+
+Run tests in container:
+```bash
+docker compose exec api uv run pytest
+```
+
+Run tests with coverage:
+```bash
+docker compose exec api uv run pytest --cov=src --cov-report=html
+```
+
+## 🎯 Common Workflows
+
+### Starting a New Feature
+```bash
+# 1. Update code
+git checkout -b feature/new-feature
+
+# 2. Format code
+./scripts/format.sh
+
+# 3. Check quality
+./scripts/lint.sh
+
+# 4. Run tests
+./scripts/dev.sh test-cov
+
+# 5. Quick API test
+docker compose exec api python scripts/quick_test.py
+```
+
+### Creating Database Changes
+```bash
+# 1. Modify models in src/*/models.py
+
+# 2. Create migration
+./scripts/dev.sh migration "describe your changes"
+
+# 3. Review generated migration in alembic/versions/
+
+# 4. Apply migration
+./scripts/dev.sh migrate
+
+# 5. Verify
+docker compose exec api uv run alembic current
+```
+
+### Preparing for Deployment
+```bash
+# 1. Run pre-deployment checks
+./scripts/lint.sh
+./scripts/dev.sh test-cov
+
+# 2. Create database backup (if needed)
+docker compose exec db pg_dump -U app app > backup.sql
+
+# 3. Deploy!
+```
+
+### Debugging Issues
+```bash
+# View logs
+./scripts/dev.sh logs-api
+
+# Open shell in container
+./scripts/dev.sh shell
+
+# Check database
+./scripts/dev.sh db-shell
+
+# Run quick tests
+docker compose exec api python scripts/quick_test.py
+```
+
+### Resetting Everything
+```bash
+# Reset Docker environment
+./scripts/dev.sh clean
+
+# Rebuild from scratch
+./scripts/dev.sh rebuild
+
+# Start fresh
+./scripts/dev.sh start
+```
+
+## 🎓 Best Practices Followed
+
+1. **Modular Structure**: Each domain has its own directory with router, schemas, models, service
+2. **Separation of Concerns**: Business logic in service.py, routes in router.py
+3. **Type Safety**: Pydantic models for validation
+4. **Hot Reload**: Instant feedback during development
+5. **Container Isolation**: Consistent environment across team
+6. **Database Migrations**: Alembic for version control
+7. **Email Testing**: MailCatcher for local email debugging
+
+## 🛠️ Troubleshooting
 
 ### Container won't start
 ```bash
@@ -221,40 +455,33 @@ docker compose build --no-cache
 docker compose watch
 ```
 
-## Environment Variables
+## 💡 Tips & Best Practices
 
-Key variables in `.env`:
+### Daily Development
+1. Always start with `./scripts/dev.sh start`
+2. Run `./scripts/format.sh` before committing
+3. Check `./scripts/lint.sh` for code quality
+4. Use `./scripts/quick_test.py` after changes
 
-- `ENVIRONMENT`: local | staging | production
-- `DOMAIN`: localhost (or localhost.tiangolo.com)
-- `POSTGRES_*`: Database credentials
-- `SECRET_KEY`: JWT secret (generate with `openssl rand -base64 32`)
-- `FIRST_SUPERUSER`: Admin email
-- `FIRST_SUPERUSER_PASSWORD`: Admin password
+### Database Changes
+1. Make model changes in `src/*/models.py`
+2. Create migration: `./scripts/dev.sh migration "description"`
+3. Review migration in `alembic/versions/`
+4. Apply: `./scripts/dev.sh migrate`
 
-## Testing
+### Email Templates
+1. Edit `.mjml` files in `email-templates/src/`
+2. Build to HTML with `mjml` command
+3. Test with `/api/v1/utils/test-email`
+4. Check MailCatcher at http://localhost:1080
 
-Run tests in container:
-```bash
-docker compose exec api uv run pytest
-```
+### Before Deploying
+1. Run `./scripts/lint.sh`
+2. Run `./scripts/dev.sh test-cov`
+3. Create database backup if needed
+4. Deploy with confidence!
 
-Run tests with coverage:
-```bash
-docker compose exec api uv run pytest --cov=src --cov-report=html
-```
-
-## Best Practices Followed
-
-1. **Modular Structure**: Each domain has its own directory with router, schemas, models, service
-2. **Separation of Concerns**: Business logic in service.py, routes in router.py
-3. **Type Safety**: Pydantic models for validation
-4. **Hot Reload**: Instant feedback during development
-5. **Container Isolation**: Consistent environment across team
-6. **Database Migrations**: Alembic for version control
-7. **Email Testing**: MailCatcher for local email debugging
-
-## Next Steps
+## 🎯 Next Steps
 
 1. Start the stack: `docker compose watch`
 2. Create your first module in `src/your_module/`

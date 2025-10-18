@@ -1,14 +1,8 @@
-# Deployment Guide - Production Deployment
+# Deployment Guide
 
-Complete deployment guide for deploying your FastAPI application to production.
+Complete deployment guide for deploying your FastAPI application to production with CI/CD, monitoring, and best practices.
 
-This guide follows:
-- ✅ [FastAPI Full-Stack Template Deployment](https://github.com/fastapi/full-stack-fastapi-template/blob/master/deployment.md)
-- ✅ [FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices)
-- ✅ Docker Multi-Stage Builds
-- ✅ GitHub Actions CI/CD
-
-## Table of Contents
+## 📋 Table of Contents
 
 1. [Prerequisites](#prerequisites)
 2. [Server Setup](#server-setup)
@@ -20,7 +14,7 @@ This guide follows:
 8. [Monitoring & Maintenance](#monitoring--maintenance)
 9. [Troubleshooting](#troubleshooting)
 
-## Prerequisites
+## 🎯 Prerequisites
 
 ### What You Need
 
@@ -43,7 +37,7 @@ This guide follows:
   - SSH client
   - Python 3.11+
 
-## Server Setup
+## 🖥️ Server Setup
 
 ### 1. Initial Server Configuration
 
@@ -88,7 +82,7 @@ ufw allow 443/tcp
 ufw enable
 ```
 
-## DNS Configuration
+## 🌐 DNS Configuration
 
 Configure your DNS records at your domain registrar:
 
@@ -114,7 +108,7 @@ dig api.barrels.gd
 dig traefik.barrels.gd
 ```
 
-## Traefik Setup
+## 🔄 Traefik Setup
 
 Traefik handles:
 - Reverse proxy
@@ -236,7 +230,7 @@ docker compose -f docker-compose.traefik.yml logs -f
 
 Visit `https://traefik.barrels.gd` - you should see the Traefik dashboard (use the credentials you saved).
 
-## Environment Variables
+## 🔐 Environment Variables
 
 ### 1. Generate Secret Keys
 
@@ -308,7 +302,7 @@ STACK_NAME=barrels-api-staging
 # ... (same as production but with staging values)
 ```
 
-## Deploy Application
+## 🚀 Deploy Application
 
 ### 1. Create Production Docker Compose
 
@@ -466,7 +460,7 @@ curl https://api.barrels.gd/api/v1/utils/health-check/
 curl https://api.barrels.gd/docs
 ```
 
-## CI/CD with GitHub Actions
+## 🔄 CI/CD with GitHub Actions
 
 ### 1. Create GitHub Secrets
 
@@ -565,7 +559,7 @@ jobs:
 
 Create `.github/workflows/deploy-staging.yml` (similar to production but with staging environment).
 
-## Monitoring & Maintenance
+## 📊 Monitoring & Maintenance
 
 ### Health Checks
 
@@ -613,7 +607,7 @@ df -h
 free -h
 ```
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 ### API Not Responding
 
@@ -660,7 +654,7 @@ docker compose -f docker-compose.prod.yml down -v
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-## Security Best Practices
+## 🔒 Security Best Practices
 
 1. ✅ **Change all default passwords**
 2. ✅ **Use strong SECRET_KEY**
@@ -673,7 +667,7 @@ docker compose -f docker-compose.prod.yml up -d
 9. ✅ **Enable fail2ban**
 10. ✅ **Regular security updates**
 
-## URLs After Deployment
+## 🌐 URLs After Deployment
 
 - 🌐 **API**: https://api.barrels.gd
 - 📚 **API Docs**: https://api.barrels.gd/docs
@@ -681,7 +675,7 @@ docker compose -f docker-compose.prod.yml up -d
 - 🗄️ **Adminer**: https://adminer.barrels.gd
 - 🧪 **Staging API**: https://api.staging.barrels.gd
 
-## Next Steps
+## 🎯 Next Steps
 
 1. ✅ Set up monitoring (Sentry, Datadog, etc.)
 2. ✅ Configure email service
@@ -691,17 +685,7 @@ docker compose -f docker-compose.prod.yml up -d
 6. ✅ Enable rate limiting
 7. ✅ Configure alerts
 
-## Support
-
-For issues or questions:
-- Check logs: `docker compose logs`
-- Review Traefik dashboard
-- Check GitHub Actions logs
-- Review this deployment guide
-
----
-
-**Deployment Checklist:**
+## 📋 Deployment Checklist
 
 - [ ] Server provisioned
 - [ ] DNS configured

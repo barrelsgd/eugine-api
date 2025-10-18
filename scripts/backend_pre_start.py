@@ -1,39 +1,44 @@
+#!/usr/bin/env python3
+"""
+Backend pre-start script.
+
+This script runs before the API starts to ensure the database is ready.
+It's called by the prestart.sh script during container startup.
+"""
+
 import logging
+import sys
+from sqlmodel import Session, create_engine, text
 
-from sqlalchemy import Engine
-from sqlmodel import Session, select
-from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
+from src.config import settings
 
-from src.database import engine
-
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-max_tries = 60 * 5  # 5 minutes
-wait_seconds = 1
 
-
-@retry(
-    stop=stop_after_attempt(max_tries),
-    wait=wait_fixed(wait_seconds),
-    before=before_log(logger, logging.INFO),
-    after=after_log(logger, logging.WARN),
-)
-def init(db_engine: Engine) -> None:
-    try:
-        with Session(db_engine) as session:
-            # Try to create session to check if DB is awake
-            session.exec(select(1))
-    except Exception as e:
-        logger.error(e)
-        raise e
-
-
-def main() -> None:
+def init() -> None:
+    """Initialize the database connection and verify it's working."""
     logger.info("Initializing service")
-    init(engine)
-    logger.info("Service finished initializing")
+    
+    try:
+        # Create engine
+        engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+        
+        # Test connection
+        with Session(engine) as session:
+            # Simple query to test connection
+            result = session.exec(text("SELECT 1")).first()
+            if result:
+                logger.info("Service finished initializing")
+            else:
+                logger.error("Database connection test failed")
+                sys.exit(1)
+                
+    except Exception as e:
+        logger.error("Failed to initialize database connection: %s", e)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    init()

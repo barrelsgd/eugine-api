@@ -1,28 +1,14 @@
 # FastAPI Backend - Barrels API
 
-A modern FastAPI backend following [FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices) with [FastAPI Full-Stack Template](https://github.com/fastapi/full-stack-fastapi-template) development workflow.
+A modern FastAPI backend following [FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices) with comprehensive development workflow.
 
-## Features
-
-- ✅ **FastAPI Best Practices Structure**: Modular architecture with `src/` directory
-- ✅ **Docker Compose Watch**: Hot-reload for instant development feedback
-- ✅ **Type Safety**: Full Pydantic validation and type hints
-- ✅ **Database Migrations**: Alembic for version control
-- ✅ **Authentication**: JWT-based auth with secure password hashing
-- ✅ **Email Testing**: MailCatcher for local email debugging
-- ✅ **API Documentation**: Auto-generated Swagger UI and ReDoc
-- ✅ **Database UI**: Adminer for easy database management
-- ✅ **Traefik Proxy**: Production-like routing in development
-
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
-
 - Docker Desktop (with Docker Compose v2.22+)
 - Git
 
 ### Setup
-
 1. **Clone and navigate to project**:
 ```bash
 cd fast-back
@@ -30,7 +16,7 @@ cd fast-back
 
 2. **Copy environment file**:
 ```bash
-cp .env.example .env
+cp .env.local.example .env
 ```
 
 3. **Edit `.env` and set secure values**:
@@ -46,15 +32,6 @@ POSTGRES_PASSWORD=your-db-password
 docker compose watch
 ```
 
-Or use the helper script:
-```bash
-# Windows PowerShell
-.\scripts\dev.ps1 start
-
-# Linux/Mac
-./scripts/dev.sh start
-```
-
 5. **Access your services**:
 - API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
@@ -62,58 +39,102 @@ Or use the helper script:
 - MailCatcher: http://localhost:1080
 - Traefik: http://localhost:8090
 
-## Development Workflow
+## 📚 Documentation
 
-### Making Changes
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete development guide with Docker, scripts, and workflows
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide with CI/CD and monitoring
+- **[TESTING.md](TESTING.md)** - Testing strategies, pre-deployment checks, and quality assurance
 
-Edit any file in `src/`, `alembic/`, `templates/`, or `scripts/` - changes sync automatically and the server reloads instantly.
+## 🏗️ Architecture
 
-### Helper Scripts
+This project follows **FastAPI Best Practices**:
 
-**Windows (PowerShell)**:
-```powershell
-.\scripts\dev.ps1 start        # Start with watch mode
-.\scripts\dev.ps1 logs-api     # View API logs
-.\scripts\dev.ps1 shell        # Open container shell
-.\scripts\dev.ps1 migrate      # Run migrations
-.\scripts\dev.ps1 test         # Run tests
-.\scripts\dev.ps1 help         # Show all commands
-```
+1. **Netflix Dispatch Pattern**: Features organized by domain (`auth/`, `items/`, `utils/`)
+2. **Router Organization**: Single Responsibility Principle
+   - Auth split into: `login.py`, `users.py`, `roles.py`, `permissions.py`
+   - Clear separation of concerns
+3. **Constants Management**: No magic strings
+   - `src/auth/constants.py` - Auth messages
+   - `src/items/constants.py` - Item messages
+4. **Enhanced API Documentation**: Detailed OpenAPI specs with response codes
+5. **Database Naming**: PostgreSQL conventions for indexes and constraints
+6. **Dependency Injection**: Type-annotated with `Annotated`, injectable settings
+7. **Type Safety**: Pydantic models everywhere
+8. **Async/Await**: Non-blocking I/O operations
 
-**Linux/Mac (Bash)**:
+## 🛠️ Key Features
+
+- ✅ **FastAPI Best Practices Structure**: Modular architecture with `src/` directory
+- ✅ **Docker Compose Watch**: Hot-reload for instant development feedback
+- ✅ **Type Safety**: Full Pydantic validation and type hints
+- ✅ **Database Migrations**: Alembic for version control
+- ✅ **Authentication**: JWT-based auth with secure password hashing
+- ✅ **Email Testing**: MailCatcher for local email debugging
+- ✅ **API Documentation**: Auto-generated Swagger UI and ReDoc
+- ✅ **Database UI**: Adminer for easy database management
+- ✅ **Traefik Proxy**: Production-like routing in development
+
+## 🧪 Testing
+
+### Quick API Test
 ```bash
-./scripts/dev.sh start         # Start with watch mode
-./scripts/dev.sh logs-api      # View API logs
-./scripts/dev.sh shell         # Open container shell
-./scripts/dev.sh migrate       # Run migrations
-./scripts/dev.sh test          # Run tests
-./scripts/dev.sh help          # Show all commands
+docker compose exec api python scripts/quick_test.py
 ```
 
-### Database Migrations
-
-Create a new migration:
-```bash
-docker compose exec api uv run alembic revision --autogenerate -m "add users table"
-```
-
-Apply migrations:
-```bash
-docker compose exec api uv run alembic upgrade head
-```
-
-### Running Tests
-
-```bash
-docker compose exec api uv run pytest
-```
-
-With coverage:
+### Full Test Suite
 ```bash
 docker compose exec api uv run pytest --cov=src --cov-report=html
 ```
 
-## Project Structure
+## 🔧 Development Workflow
+
+### Making Changes
+Edit any file in `src/`, `alembic/`, `templates/`, or `scripts/` - changes sync automatically and the server reloads instantly.
+
+### Helper Scripts
+```bash
+# Start development
+./scripts/dev.sh start
+
+# View logs
+./scripts/dev.sh logs-api
+
+# Open shell in container
+./scripts/dev.sh shell
+
+# Run migrations
+./scripts/dev.sh migrate
+
+# Run tests
+./scripts/dev.sh test
+
+# Format code
+./scripts/format.sh
+
+# Check code quality
+./scripts/lint.sh
+```
+
+### Database Migrations
+```bash
+# Create a new migration
+docker compose exec api uv run alembic revision --autogenerate -m "add users table"
+
+# Apply migrations
+docker compose exec api uv run alembic upgrade head
+```
+
+## 🚀 Deployment
+
+### Pre-Deployment Checklist
+```bash
+./scripts/pre-deploy.sh
+```
+
+### Production Deployment
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+## 📁 Project Structure
 
 ```
 fast-back/
@@ -145,21 +166,7 @@ fast-back/
 │   └── pagination.py             # Pagination helpers
 ├── tests/                        # Test suite
 ├── scripts/                      # Development scripts
-│   ├── dev.sh                    # Main development tool ⭐
-│   ├── setup.sh                  # First-time setup
-│   ├── db.sh                     # Database management
-│   ├── format.sh                 # Code formatting
-│   ├── lint.sh                   # Code quality checks
-│   ├── test.sh                   # Run test suite
-│   ├── quick_test.py             # Fast API tests
-│   ├── seed_data.py              # Test data generation
-│   ├── clean.sh                  # Cleanup artifacts
-│   ├── pre-deploy.sh             # Pre-deployment checks
-│   └── README.md                 # Scripts documentation
 ├── email-templates/              # Email templates
-│   ├── src/                      # MJML sources (editable)
-│   ├── build/                    # HTML outputs (used by app)
-│   └── README.md                 # Email template docs
 ├── alembic/                      # Database migrations
 ├── .github/workflows/            # CI/CD workflows
 ├── docker-compose.yml            # Main Docker config
@@ -168,37 +175,10 @@ fast-back/
 ├── Dockerfile                    # Development container
 ├── Dockerfile.prod               # Production container
 ├── pyproject.toml                # Python dependencies (uv)
-├── .env                          # Environment variables
-└── README.md                     # This file
+└── .env                          # Environment variables
 ```
 
-## Architecture
-
-This project follows **FastAPI Best Practices**:
-
-1. **Netflix Dispatch Pattern**: Features organized by domain (`auth/`, `items/`, `utils/`)
-2. **Router Organization**: Single Responsibility Principle
-   - Auth split into: `login.py`, `users.py`, `roles.py`, `permissions.py`
-   - Clear separation of concerns
-3. **Constants Management**: No magic strings
-   - `src/auth/constants.py` - Auth messages
-   - `src/items/constants.py` - Item messages
-4. **Enhanced API Documentation**: Detailed OpenAPI specs with response codes
-5. **Database Naming**: PostgreSQL conventions for indexes and constraints
-6. **Dependency Injection**: Type-annotated with `Annotated`, injectable settings
-7. **Type Safety**: Pydantic models everywhere
-8. **Async/Await**: Non-blocking I/O operations
-
-## Docker Compose Watch
-
-The project uses Docker Compose watch mode for development:
-
-- **Sync**: Changes to Python files sync instantly
-- **Rebuild**: Changes to `pyproject.toml` trigger rebuild
-- **Ignore**: `__pycache__`, `.pyc` files ignored
-- **Hot Reload**: FastAPI dev server auto-reloads
-
-## Environment Variables
+## 🔑 Environment Variables
 
 Key variables in `.env`:
 
@@ -207,32 +187,11 @@ Key variables in `.env`:
 | `ENVIRONMENT` | Environment name | `local`, `staging`, `production` |
 | `DOMAIN` | Base domain | `localhost` or `localhost.tiangolo.com` |
 | `SECRET_KEY` | JWT secret | Generate with `openssl rand -base64 32` |
-| `POSTGRES_*` | Database credentials | See `.env.example` |
+| `POSTGRES_*` | Database credentials | See `.env.local.example` |
 | `FIRST_SUPERUSER` | Admin email | `admin@example.com` |
 | `FIRST_SUPERUSER_PASSWORD` | Admin password | Strong password |
 
-## API Documentation
-
-Once running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## Testing Emails
-
-All emails are caught by MailCatcher:
-- **Web UI**: http://localhost:1080
-- **SMTP**: `mailcatcher:1025` (configured automatically)
-
-## Database Management
-
-Access Adminer at http://localhost:8080:
-- **System**: PostgreSQL
-- **Server**: db
-- **Username**: From `POSTGRES_USER` in `.env`
-- **Password**: From `POSTGRES_PASSWORD` in `.env`
-- **Database**: From `POSTGRES_DB` in `.env`
-
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 ### Port conflicts
 Change ports in `docker-compose.override.yml`:
@@ -262,18 +221,21 @@ docker compose build --no-cache
 docker compose watch
 ```
 
-## Documentation
+## 🎓 Learning Resources
 
-- **[QUICKSTART.md](QUICKSTART.md)**: Get started in 5 minutes
-- **[DEVELOPMENT.md](DEVELOPMENT.md)**: Detailed development guide
-- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Production deployment guide
-- **[TESTING.md](TESTING.md)**: Testing strategies and guides
-- **[scripts/README.md](scripts/README.md)**: All development scripts
-- **[email-templates/README.md](email-templates/README.md)**: Email template editing
-- **[FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices)**: Structure guidelines
-- **[FastAPI Full-Stack Template](https://github.com/fastapi/full-stack-fastapi-template)**: Development workflow
+### Your Project
+1. **Start with**: [DEVELOPMENT.md](DEVELOPMENT.md)
+2. **Understand structure**: Explore `src/` directory
+3. **Try scripts**: Use `./scripts/dev.sh` commands
+4. **Read docs**: Check [TESTING.md](TESTING.md) for quality assurance
 
-## Tech Stack
+### External Resources
+- **FastAPI Best Practices**: https://github.com/zhanymkanov/fastapi-best-practices
+- **FastAPI Docs**: https://fastapi.tiangolo.com
+- **SQLModel Docs**: https://sqlmodel.tiangolo.com
+- **Pydantic Docs**: https://docs.pydantic.dev
+
+## 🎯 Tech Stack
 
 - **FastAPI**: Modern Python web framework
 - **PostgreSQL**: Database
@@ -285,11 +247,11 @@ docker compose watch
 - **Traefik**: Reverse proxy
 - **pytest**: Testing framework
 
-## License
+## 📄 License
 
 [Your License Here]
 
-## Contributing
+## 🤝 Contributing
 
 1. Create a feature branch
 2. Make your changes

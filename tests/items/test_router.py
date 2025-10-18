@@ -10,13 +10,14 @@ from tests.utils.item import create_random_item
 def test_create_item(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Test creating a new item."""
     data = {"title": "Foo", "description": "Fighters"}
     response = client.post(
         f"{settings.API_V1_STR}/items/",
         headers=superuser_token_headers,
         json=data,
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     content = response.json()
     assert content["title"] == data["title"]
     assert content["description"] == data["description"]
@@ -27,6 +28,7 @@ def test_create_item(
 def test_read_item(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test reading a specific item."""
     item = create_random_item(db)
     response = client.get(
         f"{settings.API_V1_STR}/items/{item.id}",
@@ -43,6 +45,7 @@ def test_read_item(
 def test_read_item_not_found(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Test reading a non-existent item."""
     response = client.get(
         f"{settings.API_V1_STR}/items/{uuid.uuid4()}",
         headers=superuser_token_headers,
@@ -55,6 +58,7 @@ def test_read_item_not_found(
 def test_read_item_not_enough_permissions(
     client: TestClient, normal_user_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test reading item without sufficient permissions."""
     item = create_random_item(db)
     response = client.get(
         f"{settings.API_V1_STR}/items/{item.id}",
@@ -68,6 +72,7 @@ def test_read_item_not_enough_permissions(
 def test_read_items(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test reading multiple items."""
     create_random_item(db)
     create_random_item(db)
     response = client.get(
@@ -82,6 +87,7 @@ def test_read_items(
 def test_update_item(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test updating an item."""
     item = create_random_item(db)
     data = {"title": "Updated title", "description": "Updated description"}
     response = client.put(
@@ -100,6 +106,7 @@ def test_update_item(
 def test_update_item_not_found(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Test updating a non-existent item."""
     data = {"title": "Updated title", "description": "Updated description"}
     response = client.put(
         f"{settings.API_V1_STR}/items/{uuid.uuid4()}",
@@ -114,6 +121,7 @@ def test_update_item_not_found(
 def test_update_item_not_enough_permissions(
     client: TestClient, normal_user_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test updating item without sufficient permissions."""
     item = create_random_item(db)
     data = {"title": "Updated title", "description": "Updated description"}
     response = client.put(
@@ -129,6 +137,7 @@ def test_update_item_not_enough_permissions(
 def test_delete_item(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test deleting an item."""
     item = create_random_item(db)
     response = client.delete(
         f"{settings.API_V1_STR}/items/{item.id}",
@@ -142,6 +151,7 @@ def test_delete_item(
 def test_delete_item_not_found(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
+    """Test deleting a non-existent item."""
     response = client.delete(
         f"{settings.API_V1_STR}/items/{uuid.uuid4()}",
         headers=superuser_token_headers,
@@ -154,6 +164,7 @@ def test_delete_item_not_found(
 def test_delete_item_not_enough_permissions(
     client: TestClient, normal_user_token_headers: dict[str, str], db: Session
 ) -> None:
+    """Test deleting item without sufficient permissions."""
     item = create_random_item(db)
     response = client.delete(
         f"{settings.API_V1_STR}/items/{item.id}",
