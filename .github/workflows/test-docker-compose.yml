@@ -18,11 +18,21 @@ jobs:
         uses: actions/checkout@v4
       - name: Prepare .env for CI
         run: |
+          set -euo pipefail
+          echo "🔍 Checking for environment template files..."
+          if [ ! -f .env.local.example ]; then
+            echo "❌ ERROR: .env.local.example not found in repository"
+            echo "📁 Available .env files:"
+            ls -la .env* 2>/dev/null || echo "No .env files found"
+            exit 1
+          fi
+          echo "✅ Found .env.local.example, creating .env for CI..."
           cp .env.local.example .env
           sed -i 's/^ENVIRONMENT=.*/ENVIRONMENT=local/' .env
           grep -q '^SECRET_KEY=' .env || echo 'SECRET_KEY=changethis' >> .env
           grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
           if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
+          echo "✅ .env file prepared successfully"
       - name: Create traefik network (CI)
         run: docker network create traefik-public || true
       - run: docker compose build

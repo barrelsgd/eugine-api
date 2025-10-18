@@ -1,6 +1,9 @@
 .env
 .env.*
 !.env.example
+!.env.local.example
+!.env.staging.example
+!.env.production.example
 .vscode
 node_modules/
 /test-results/
