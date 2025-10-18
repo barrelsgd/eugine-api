@@ -33,11 +33,20 @@ jobs:
           grep -q '^POSTGRES_PASSWORD=' .env || echo 'POSTGRES_PASSWORD=changethis' >> .env
           if grep -q '^SENTRY_DSN=' .env; then sed -i 's/^SENTRY_DSN=.*/SENTRY_DSN=/' .env; else echo 'SENTRY_DSN=' >> .env; fi
           echo "✅ .env file prepared successfully"
+          
+          # Extract PROJECT_NAME for consistent container naming
+          PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2- | tr -d '\r' || echo "fast-back")
+          echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+          echo "Using PROJECT_NAME: $PROJECT_NAME"
       - name: Create traefik network (CI)
         run: docker network create traefik-public || true
-      - run: docker compose build
-      - run: docker compose down -v --remove-orphans
-      - run: docker compose up -d --wait api adminer
+      - name: Build with Docker Compose
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" build
+      - name: Clean up any existing containers
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" down -v --remove-orphans
+      - name: Start services
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" up -d --wait api adminer
       - name: Test API is up
         run: curl http://localhost:8000/api/v1/utils/health-check/
-      - run: docker compose down -v --remove-orphans
+      - name: Clean up
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" down -v --remove-orphans
