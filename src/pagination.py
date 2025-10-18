@@ -42,7 +42,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
 class PaginationParams(BaseModel):
     """
     Pagination parameters for API endpoints.
-    
+
     Use this as a dependency to standardize pagination across endpoints.
     Provides both page-based and offset-based pagination.
     """
@@ -68,7 +68,7 @@ def get_pagination_params(
 ) -> PaginationParams:
     """
     Dependency to extract pagination parameters from query string.
-    
+
     Usage:
         @router.get("/items")
         def list_items(pagination: Annotated[PaginationParams, Depends(get_pagination_params)]):

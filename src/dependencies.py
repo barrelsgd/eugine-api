@@ -28,7 +28,11 @@ from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 from sqlmodel import Session
 
-from src.auth.constants import ERROR_INACTIVE_USER, ERROR_INVALID_CREDENTIALS, ERROR_USER_NOT_FOUND
+from src.auth.constants import (
+    ERROR_INACTIVE_USER,
+    ERROR_INVALID_CREDENTIALS,
+    ERROR_USER_NOT_FOUND,
+)
 from src.auth.models import User
 from src.auth.utils import ALGORITHM
 from src.config import Settings, get_settings, settings
@@ -45,10 +49,10 @@ reusable_oauth2 = OAuth2PasswordBearer(
 def get_db() -> Generator[Session, None, None]:
     """
     Database session dependency.
-    
+
     Yields a SQLModel session that is automatically closed after the request.
     This ensures proper connection management and prevents connection leaks.
-    
+
     The session is cached per request, so multiple dependencies can use
     the same session without creating multiple connections.
     """
@@ -65,14 +69,14 @@ TokenDep = Annotated[str, Depends(reusable_oauth2)]
 def get_current_user(session: SessionDep, token: TokenDep) -> User:
     """
     Get current authenticated user dependency.
-    
+
     This dependency chains two other dependencies:
     1. SessionDep - for database access
     2. TokenDep - for JWT token validation
-    
+
     Returns the authenticated user if the token is valid.
     Raises HTTPException if token is invalid or user not found.
-    
+
     This dependency is cached, so you can use it multiple times in
     chained dependencies without additional database queries."""
     try:
@@ -100,13 +104,13 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 def get_current_active_superuser(current_user: CurrentUser) -> User:
     """
     Get current superuser dependency.
-    
+
     This dependency chains CurrentUser, demonstrating dependency composition:
     CurrentUser -> get_current_user -> SessionDep + TokenDep
-    
+
     Returns the user if they are a superuser.
     Raises HTTPException if the user lacks superuser privileges.
-    
+
     Example:
         @router.delete("/admin/users/{user_id}")
         def delete_user(superuser: Annotated[User, Depends(get_current_active_superuser)]):

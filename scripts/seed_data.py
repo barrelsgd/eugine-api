@@ -57,16 +57,16 @@ def create_test_items(session: Session, users: list[User], items_per_user: int =
 
 def main():
     logger.info("Starting database seeding...")
-    
+
     with Session(engine) as session:
         # Create test users
         logger.info("Creating test users...")
         users = create_test_users(session, count=5)
-        
+
         # Create test items
         logger.info("Creating test items...")
         create_test_items(session, users, items_per_user=3)
-    
+
     logger.info("Database seeding completed!")
     logger.info(f"Created {len(users)} users with 3 items each")
     logger.info("Test credentials: testuser0@example.com / testpass123")

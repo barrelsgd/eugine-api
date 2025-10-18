@@ -143,10 +143,10 @@ settings = Settings()  # type: ignore
 def get_settings() -> Settings:
     """
     Dependency to get settings instance.
-    
+
     Use this in FastAPI dependencies when you need testable settings.
     The function can be overridden in tests to provide custom settings.
-    
+
     Example:
         @router.get("/")
         def my_route(settings: Annotated[Settings, Depends(get_settings)]):

@@ -16,6 +16,17 @@ HTTP_403_FORBIDDEN = 403
 HTTP_404_NOT_FOUND = 404
 HTTP_409_CONFLICT = 409
 
+# Error codes
+class AuthErrorCode:
+    INVALID_CREDENTIALS = "invalid_credentials"
+    USER_NOT_FOUND = "user_not_found"
+    INACTIVE_USER = "inactive_user"
+    USER_INACTIVE = "user_inactive"
+    USER_ALREADY_EXISTS = "user_already_exists"
+    INVALID_TOKEN = "invalid_token"
+    TOKEN_EXPIRED = "token_expired"
+    INSUFFICIENT_PERMISSIONS = "insufficient_permissions"
+
 # Error messages
 ERROR_INCORRECT_CREDENTIALS = "Incorrect email or password"
 ERROR_INACTIVE_USER = "Inactive user"

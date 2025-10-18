@@ -1,3 +1,5 @@
+from typing import cast
+
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -41,7 +43,19 @@ else:
     # Setting openapi_url to None disables /docs and /redoc endpoints
     app_configs["openapi_url"] = None
 
-app = FastAPI(**app_configs)
+# Extract values with proper typing
+openapi_url: str | None = cast(str | None, app_configs.get("openapi_url"))
+docs_url: str | None = cast(str | None, app_configs.get("docs_url"))
+redoc_url: str | None = cast(str | None, app_configs.get("redoc_url"))
+
+app = FastAPI(
+    title=str(app_configs.get("title", "")),
+    description=str(app_configs.get("description", "")),
+    version=str(app_configs.get("version", "")),
+    openapi_url=openapi_url,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+)
 
 # Set all CORS enabled origins
 if settings.all_cors_origins:
@@ -71,8 +85,8 @@ app.add_exception_handler(IntegrityError, integrity_error_handler)  # type: igno
 # Include private router for local development
 if settings.ENVIRONMENT == "local":
     try:
-        from src.private.router import (
-            router as private_router,  # type: ignore[import-untyped]
+        from src.private.router import (  # type: ignore[import-untyped]
+            router as private_router,
         )
 
         app.include_router(private_router, prefix="/api/v1")
