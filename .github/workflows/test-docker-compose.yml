@@ -105,29 +105,27 @@ jobs:
             echo "=== Attempting to continue anyway... ==="
           fi
           
-          # Check if prestart completed successfully
-          echo "Checking prestart exit status..."
-          PRESTART_STATUS=$(docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart --format "table {{.State}}" | tail -n +2)
-          echo "Prestart status: $PRESTART_STATUS"
-          
-          if [[ "$PRESTART_STATUS" != *"exited"* ]]; then
+          # Check if prestart completed successfully by examining logs
+          echo "Checking prestart completion status..."
+          if docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart | grep -q "✅ Prestart script completed successfully!"; then
+            echo "✅ Prestart completed successfully based on logs"
+          else
             echo "❌ Prestart did not complete successfully"
             echo "=== Prestart Logs ==="
             docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart
+            echo "=== Container Status ==="
+            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart
             exit 1
           fi
           
-          # Check exit code of prestart container
-          PRESTART_EXIT_CODE=$(docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart --format "table {{.ExitCode}}" | tail -n +2)
-          echo "Prestart exit code: $PRESTART_EXIT_CODE"
+          # Additional validation: Check container state
+          PRESTART_STATUS=$(docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps prestart --format "{{.State}}" | head -1)
+          echo "Prestart container state: $PRESTART_STATUS"
           
-          if [[ "$PRESTART_EXIT_CODE" != "0" && "$PRESTART_EXIT_CODE" != "" ]]; then
-            echo "⚠️ Prestart had issues (exit code: $PRESTART_EXIT_CODE), but continuing..."
-            echo "=== Prestart Logs ==="
-            docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs prestart
-            echo "=== Attempting to continue with API startup... ==="
+          if [[ "$PRESTART_STATUS" == *"exited"* ]]; then
+            echo "✅ Prestart container exited properly"
           else
-            echo "✅ Prestart completed successfully"
+            echo "⚠️ Prestart container state: $PRESTART_STATUS (may be expected in some cases)"
           fi
           
           docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml up -d api
@@ -145,17 +143,78 @@ jobs:
       - name: Test API is up
         run: |
           echo "Testing API health check endpoint..."
-          # Retry logic for the health check
+          # Retry logic for the health check with better error reporting
           for i in {1..10}; do
             echo "Attempt $i/10..."
-            if curl -f http://localhost:8000/api/v1/utils/health-check/; then
+            if curl -f -s http://localhost:8000/api/v1/utils/health-check/; then
               echo "✅ API health check successful!"
               exit 0
+            else
+              echo "❌ Health check failed (attempt $i/10), waiting 5 seconds..."
+              # Show API logs on failure for debugging
+              if [ $i -eq 5 ]; then
+                echo "=== API Logs (last 20 lines) - Mid-attempt debugging ==="
+                docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=20 api || true
+              fi
+              sleep 5
             fi
-            echo "❌ Health check failed, waiting 5 seconds..."
-            sleep 5
           done
           echo "❌ All health check attempts failed"
+          echo "=== Final debugging information ==="
+          echo "=== Container Status ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps || true
+          echo "=== API Logs (last 50 lines) ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=50 api || true
+          echo "=== Network connectivity test ==="
+          curl -v http://localhost:8000/api/v1/utils/health-check/ || true
           exit 1
       - name: Clean up
-        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans
+        if: always()
+        run: |
+          echo "🧹 Cleaning up Docker resources..."
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans || true
+          echo "✅ Cleanup completed"
+          
+      - name: Show detailed logs on failure
+        if: failure()
+        run: |
+          echo "🚨 DOCKER COMPOSE TEST FAILED - COMPREHENSIVE DEBUGGING"
+          echo "======================================================"
+          echo "=== Environment Information ==="
+          echo "PROJECT_NAME: ${{ env.PROJECT_NAME }}"
+          echo "GitHub Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "=== Docker System Information ==="
+          docker --version || true
+          docker compose version || true
+          docker system df || true
+          echo ""
+          echo "=== All Container Status ==="
+          docker ps -a || true
+          echo ""
+          echo "=== Docker Compose Status ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps || true
+          echo ""
+          echo "=== Environment File (sanitized) ==="
+          sed -n '1,50p' .env | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
+          echo ""
+          echo "=== Database Logs (last 100 lines) ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=100 db || true
+          echo ""
+          echo "=== Prestart Logs (last 100 lines) ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=100 prestart || true
+          echo ""
+          echo "=== API Logs (last 100 lines) ==="
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=100 api || true
+          echo ""
+          echo "=== Network Information ==="
+          docker network ls || true
+          docker network inspect "${{ env.PROJECT_NAME }}_default" || true
+          echo ""
+          echo "=== Volume Information ==="
+          docker volume ls | grep "${{ env.PROJECT_NAME }}" || true
+          echo ""
+          echo "=== Port Usage ==="
+          netstat -tlnp | grep -E ':(8000|5432)' || true

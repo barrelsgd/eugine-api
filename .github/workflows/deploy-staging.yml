@@ -195,7 +195,22 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           echo "🚀 Deploying to staging..."
-          docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d
+          echo "📋 Deployment configuration:"
+          echo "  - Environment: $ENV_FILE"
+          echo "  - Project: ${{ env.PROJECT_NAME }}"
+          echo "  - Domain: staging.api.barrels.gd"
+          
+          # Deploy with error handling
+          if docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d; then
+            echo "✅ Services started successfully"
+          else
+            echo "❌ Failed to start services"
+            echo "=== Service Status ==="
+            docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
+            echo "=== Service Logs ==="
+            docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=50 || true
+            exit 1
+          fi
           
           echo "⏳ Waiting for services to be ready..."
           sleep 30
@@ -204,15 +219,37 @@ jobs:
           docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps
           
           echo "🏥 Performing health check..."
-          # Wait for API to be ready
+          # Wait for API to be ready with better error reporting
+          HEALTH_CHECK_PASSED=false
           for i in {1..10}; do
+            echo "Health check attempt $i/10..."
             if curl -f -s "https://staging.api.barrels.gd/api/v1/utils/health-check/" > /dev/null; then
               echo "✅ Staging API health check passed"
+              HEALTH_CHECK_PASSED=true
               break
+            else
+              echo "❌ Health check failed (attempt $i/10)"
+              if [ $i -eq 5 ]; then
+                echo "=== Mid-deployment debugging ==="
+                echo "=== API Logs (last 30 lines) ==="
+                docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=30 api || true
+                echo "=== Service Status ==="
+                docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
+              fi
+              echo "⏳ Waiting 10 seconds before next attempt..."
+              sleep 10
             fi
-            echo "⏳ Health check attempt $i/10 - waiting 10 seconds..."
-            sleep 10
           done
+          
+          if [ "$HEALTH_CHECK_PASSED" = false ]; then
+            echo "❌ Health check failed after 10 attempts"
+            echo "=== Final debugging information ==="
+            echo "=== All Service Logs ==="
+            docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=100 || true
+            echo "=== Network connectivity test ==="
+            curl -v "https://staging.api.barrels.gd/api/v1/utils/health-check/" || true
+            exit 1
+          fi
 
       - name: Show logs on failure
         if: failure()

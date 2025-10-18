@@ -150,12 +150,20 @@ jobs:
           FIRST_SUPERUSER_PASSWORD: changethis
         run: |
           echo "🧪 Running test suite with coverage..."
-          if uv run coverage run --source=src -m pytest -v; then
+          echo "📋 Test environment:"
+          echo "  - Database: $POSTGRES_SERVER:$POSTGRES_PORT/$POSTGRES_DB"
+          echo "  - User: $POSTGRES_USER"
+          echo "  - Superuser: $FIRST_SUPERUSER"
+          
+          # Run tests with detailed output
+          if uv run coverage run --source=src -m pytest -v --tb=short; then
             echo "✅ All tests passed"
           else
             echo "❌ Some tests failed"
             echo "📋 Test failure summary:"
-            uv run pytest --tb=short -v || true
+            uv run pytest --tb=short -v --maxfail=5 || true
+            echo "📋 Failed test details:"
+            uv run pytest --tb=long --maxfail=3 || true
             exit 1
           fi
           
@@ -166,7 +174,17 @@ jobs:
           
           # Show coverage summary
           echo "📈 Coverage Summary:"
-          uv run coverage report --show-missing | tail -n 1
+          COVERAGE_LINE=$(uv run coverage report --show-missing | tail -n 1)
+          echo "$COVERAGE_LINE"
+          
+          # Extract coverage percentage for potential threshold checking
+          COVERAGE_PCT=$(echo "$COVERAGE_LINE" | grep -o '[0-9]\+%' | head -1 | sed 's/%//')
+          if [ -n "$COVERAGE_PCT" ]; then
+            echo "📊 Coverage percentage: $COVERAGE_PCT%"
+            if [ "$COVERAGE_PCT" -lt 80 ]; then
+              echo "⚠️ Warning: Coverage is below 80%"
+            fi
+          fi
 
       - name: Upload coverage HTML
         uses: actions/upload-artifact@v4
@@ -202,6 +220,28 @@ jobs:
           tags: test-image:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/test-image.tar
+          
+      - name: Validate Docker image
+        run: |
+          echo "🔍 Validating Docker image..."
+          # Load the image from tar file
+          docker load -i /tmp/test-image.tar
+          
+          # Test that the image can be created and basic commands work
+          echo "📋 Testing image creation..."
+          CONTAINER_ID=$(docker create test-image:latest)
+          echo "✅ Container created successfully: $CONTAINER_ID"
+          
+          # Test basic image properties
+          echo "📋 Image information:"
+          docker inspect test-image:latest --format='{{.Config.WorkingDir}}' || true
+          docker inspect test-image:latest --format='{{.Config.ExposedPorts}}' || true
+          
+          # Clean up
+          docker rm $CONTAINER_ID
+          docker rmi test-image:latest
+          echo "✅ Docker image validation completed"
 
   # Job 5: API Documentation Check
   docs:
