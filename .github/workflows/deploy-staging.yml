@@ -25,7 +25,8 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const sha = context.payload.workflow_run.head_sha;
+            // Handle both workflow_run and workflow_dispatch triggers
+            const sha = context.payload.workflow_run?.head_sha || context.sha;
 
             // Define gating policy
             const REQUIRED = ['ci', 'test docker compose'];
