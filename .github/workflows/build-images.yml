@@ -1,5 +1,6 @@
 name: Build and Push Docker Images
 
+# Builds Docker images for staging (on master push) and production (on release)
 on:
   workflow_run:
     workflows: ["CI"]
