@@ -23,7 +23,7 @@ jobs:
   build-and-push:
     name: Build and Push Images
     runs-on: ubuntu-latest
-    # Run on master push (for staging) or release (for production) or manual dispatch
+    # Run on master push (for staging) or release (for production) or manual dispatch.
     if: |
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
