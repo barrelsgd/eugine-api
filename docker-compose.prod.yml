@@ -20,6 +20,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     networks:
       - default
 
@@ -80,23 +88,31 @@ services:
       - SENTRY_DSN=${SENTRY_DSN}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/').read()\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request,ssl; ctx=ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE; urllib.request.urlopen('https://localhost:8000/api/v1/utils/health-check/', context=ctx).read()\" || python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/').read()\""]
       interval: 30s
-      timeout: 10s
-      start_period: 40s
-      retries: 3
+      timeout: 15s
+      start_period: 60s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     labels:
       - traefik.enable=true
       - traefik.docker.network=traefik-public
       - traefik.constraint-label=traefik-public
 
       # HTTP Router
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.rule=Host(`api.${DOMAIN}`)
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.entrypoints=http
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-http.middlewares=https-redirect
 
       # HTTPS Router
-      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.rule=Host(`api.${DOMAIN}`)
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.entrypoints=https
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.tls=true
       - traefik.http.routers.${STACK_NAME:-fast-back}-api-https.tls.certresolver=le

@@ -2,7 +2,9 @@ name: Deploy to Staging
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: 
+      - "CI"
+      - "Build and Push Docker Images"
     types:
       - completed
     branches:
@@ -14,7 +16,10 @@ jobs:
     name: Verify checks for staging commit
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && 
+       github.event.workflow_run.name == 'Build and Push Docker Images')
     permissions:
       checks: read
       contents: read
@@ -117,13 +122,16 @@ jobs:
 
             # Enforce staging values by stripping existing keys and appending desired ones
             tmp_file="$(mktemp)"
-            grep -v -E '^(ENVIRONMENT|DOMAIN|STACK_NAME|POSTGRES_DB|PROJECT_NAME)=' "$ENV_FILE" > "$tmp_file" || true
+            grep -v -E '^(ENVIRONMENT|DOMAIN|STACK_NAME|POSTGRES_DB|PROJECT_NAME|REGISTRY|IMAGE_NAME|TAG)=' "$ENV_FILE" > "$tmp_file" || true
             printf '%s\n' \
               'ENVIRONMENT=staging' \
-              'DOMAIN=staging.api.barrels.gd' \
+              'DOMAIN=barrels.gd' \
               'STACK_NAME=barrels-api-staging' \
               'POSTGRES_DB=app_staging' \
               'PROJECT_NAME=barrels-api-staging' \
+              'REGISTRY=ghcr.io' \
+              'IMAGE_NAME=barrelsgd/eugine-api' \
+              'TAG=staging' \
               >> "$tmp_file"
             mv "$tmp_file" "$ENV_FILE"
 
@@ -185,7 +193,7 @@ jobs:
 
           # Read-only validations
           grep -q '^ENVIRONMENT=staging$' "$ENV_FILE" || { echo 'ERROR: ENVIRONMENT must be staging'; exit 1; }
-          grep -q '^DOMAIN=staging.api.barrels.gd$' "$ENV_FILE" || { echo 'ERROR: DOMAIN must be staging.api.barrels.gd'; exit 1; }
+          grep -q '^DOMAIN=barrels.gd$' "$ENV_FILE" || { echo 'ERROR: DOMAIN must be barrels.gd'; exit 1; }
           grep -q '^STACK_NAME=barrels-api-staging$' "$ENV_FILE" || { echo 'ERROR: STACK_NAME must be barrels-api-staging'; exit 1; }
           grep -q '^POSTGRES_DB=app_staging$' "$ENV_FILE" || { echo 'ERROR: POSTGRES_DB must be app_staging'; exit 1; }
 
@@ -208,8 +216,12 @@ jobs:
           # docker-compose services reference env_file: .env. Link external env for runtime.
           ln -sf "$ENV_FILE" .env
 
-      - name: Build with Docker Compose
-        run: docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" build
+      - name: Pull images from registry
+        run: |
+          set -euxo pipefail
+          echo "Pulling images from GitHub Container Registry..."
+          docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" pull
+          echo "Images pulled successfully"
 
       - name: Deploy with Docker Compose
         run: |
@@ -220,14 +232,14 @@ jobs:
           echo "  - Domain: staging.api.barrels.gd"
           
           # Deploy with error handling
-          if docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" up -d; then
+          if docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" up -d; then
             echo "SUCCESS Services started successfully"
           else
             echo "ERROR Failed to start services"
             echo "=== Service Status ==="
-            docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
+            docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" ps || true
             echo "=== Service Logs ==="
-            docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=50 || true
+            docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" logs --tail=50 || true
             exit 1
           fi
           
@@ -235,7 +247,7 @@ jobs:
           sleep 30
           
           echo "Checking Checking deployment status..."
-          docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps
+          docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" ps
           
           echo "🏥 Performing health check..."
           # Wait for API to be ready with better error reporting
@@ -251,9 +263,9 @@ jobs:
               if [ $i -eq 5 ]; then
                 echo "=== Mid-deployment debugging ==="
                 echo "=== API Logs (last 30 lines) ==="
-                docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=30 api || true
+                docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" logs --tail=30 api || true
                 echo "=== Service Status ==="
-                docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
+                docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" ps || true
               fi
               echo "⏳ Waiting 10 seconds before next attempt..."
               sleep 10
@@ -264,7 +276,7 @@ jobs:
             echo "ERROR Health check failed after 10 attempts"
             echo "=== Final debugging information ==="
             echo "=== All Service Logs ==="
-            docker compose --env-file "$ENV_FILE" -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --tail=100 || true
+            docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" logs --tail=100 || true
             echo "=== Network connectivity test ==="
             curl -v "https://staging.api.barrels.gd/api/v1/utils/health-check/" || true
             exit 1
@@ -279,16 +291,16 @@ jobs:
           docker ps -a || true
           echo ""
           echo "=== Docker Compose Status ==="
-          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" ps || true
+          docker compose -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" ps || true
           echo ""
           echo "=== Prestart Logs (last 200 lines) ==="
-          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
+          docker compose -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 prestart || true
           echo ""
           echo "=== Database Logs (last 200 lines) ==="
-          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
+          docker compose -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 db || true
           echo ""
           echo "=== API Logs (last 200 lines) ==="
-          docker compose -f docker-compose.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 api || true
+          docker compose -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" logs --no-color --tail=200 api || true
           echo ""
           echo "=== Environment File (sanitized) ==="
           sed -n '1,200p' "$ENV_FILE" | sed -E 's/(SECRET_KEY|POSTGRES_PASSWORD|FIRST_SUPERUSER_PASSWORD)=.*/\1=****/' || true
@@ -298,3 +310,15 @@ jobs:
           echo ""
           echo "=== Volume Status ==="
           docker volume ls | grep "${{ env.PROJECT_NAME }}" || true
+
+      - name: Cleanup runner environment
+        if: always()
+        run: |
+          echo "🧹 Cleaning up staging runner environment..."
+          # Clean up Docker resources
+          docker system prune -af --volumes || true
+          # Remove any temporary files
+          rm -rf /tmp/* || true
+          # Clear any sensitive environment variables
+          unset SECRET_KEY POSTGRES_PASSWORD FIRST_SUPERUSER_PASSWORD || true
+          echo "✅ Staging runner cleanup completed"

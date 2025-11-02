@@ -243,12 +243,30 @@ jobs:
           cache-to: type=gha,mode=max
           outputs: type=docker,dest=/tmp/test-image.tar
           
+      - name: Load Docker image for scanning
+        run: |
+          echo "Loading Docker image for vulnerability scanning..."
+          docker load -i /tmp/test-image.tar
+          echo "SUCCESS Image loaded successfully"
+
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'test-image:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '1'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
       - name: Validate Docker image
         run: |
-          echo "Checking Validating Docker image..."
-          # Load the image from tar file
-          docker load -i /tmp/test-image.tar
-          
+          echo "Validating Docker image functionality..."
           # Test that the image can be created and basic commands work
           echo "INFO Testing image creation..."
           CONTAINER_ID=$(docker create test-image:latest)

@@ -63,9 +63,10 @@ USER appuser
 # Expose port (8000 is standard for FastAPI)
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/').read()"
+# Health check - improved for production
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=5 \
+    CMD python -c "import urllib.request,ssl; ctx=ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE; urllib.request.urlopen('https://localhost:8000/api/v1/utils/health-check/', context=ctx).read()" || \
+    python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/').read()"
 
 # Run the application with uvicorn
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

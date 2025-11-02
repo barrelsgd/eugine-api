@@ -121,14 +121,55 @@ class Settings(BaseSettings):
                 warnings.warn(message, stacklevel=1)
             else:
                 raise ValueError(message)
+    
+    def _validate_secret_strength(self, var_name: str, value: str | None) -> None:
+        """Validate secret strength for production environments."""
+        if self.ENVIRONMENT == "local":
+            return  # Skip validation for local development
+            
+        if not value:
+            raise ValueError(f"{var_name} is required in {self.ENVIRONMENT} environment")
+        
+        # Define minimum lengths for different secrets
+        min_lengths = {
+            "SECRET_KEY": 32,
+            "POSTGRES_PASSWORD": 16,
+            "FIRST_SUPERUSER_PASSWORD": 12,
+        }
+        
+        min_length = min_lengths.get(var_name, 8)
+        
+        if len(value) < min_length:
+            raise ValueError(
+                f"{var_name} must be at least {min_length} characters long "
+                f"(current: {len(value)} characters)"
+            )
+        
+        # Check for weak patterns
+        if value.isdigit():
+            raise ValueError(f"{var_name} cannot be only numbers")
+        
+        if value.isalpha():
+            raise ValueError(f"{var_name} cannot be only letters")
+        
+        # Check for common weak passwords
+        weak_passwords = ["password", "123456", "admin", "test", "secret"]
+        if value.lower() in weak_passwords:
+            raise ValueError(f"{var_name} uses a common weak password")
 
     @model_validator(mode="after")
     def _enforce_non_default_secrets(self) -> Self:
+        # Check for default values
         self._check_default_secret("SECRET_KEY", self.SECRET_KEY)
         self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
         self._check_default_secret(
             "FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD
         )
+        
+        # Validate secret strength for production
+        self._validate_secret_strength("SECRET_KEY", self.SECRET_KEY)
+        self._validate_secret_strength("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
+        self._validate_secret_strength("FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD)
 
         return self
 

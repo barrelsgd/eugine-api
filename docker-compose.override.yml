@@ -7,7 +7,7 @@ services:
   proxy:
     image: traefik:3.0
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-certs:/certificates
     ports:
       - "80:80"
@@ -53,7 +53,7 @@ services:
   adminer:
     restart: "no"
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - traefik-public
 
