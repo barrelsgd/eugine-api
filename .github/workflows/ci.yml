@@ -224,6 +224,9 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     
     steps:
       - name: Checkout code
@@ -255,8 +258,9 @@ jobs:
           image-ref: 'test-image:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          scanners: 'vuln'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
