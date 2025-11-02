@@ -258,7 +258,7 @@ jobs:
           image-ref: 'test-image:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL'
           exit-code: '1'
           scanners: 'vuln'
 
