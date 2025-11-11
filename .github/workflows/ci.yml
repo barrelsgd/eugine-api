@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "Checking Running type checker..."
           if uv run mypy src; then
-            echo "SUCCESS Type checking passed"
+            echo "SUCCESS: Type checking passed"
           else
             echo "WARNING Type checking found issues (non-blocking for now)"
             echo "INFO Type issues summary:"
