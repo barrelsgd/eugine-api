@@ -193,43 +193,25 @@ jobs:
           DEFAULT_TAG: staging
         run: |
           set -euo pipefail
-          python - <<'PY'
-          if True:
-              import os
-              import re
-              from pathlib import Path
+          ensure_var() {
+            local key="$1"
+            local value="$2"
+            if grep -q "^${key}=" "$ENV_FILE"; then
+              local current
+              current=$(grep "^${key}=" "$ENV_FILE" | head -n1 | cut -d'=' -f2- | tr -d '\r')
+              if [ -z "$current" ]; then
+                tmp=$(mktemp)
+                sed "s/^${key}=.*/${key}=${value}/" "$ENV_FILE" > "$tmp"
+                mv "$tmp" "$ENV_FILE"
+              fi
+            else
+              printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+            fi
+          }
 
-              env_file = Path(os.environ["ENV_FILE"])
-              if not env_file.exists():
-                  raise SystemExit(f"{env_file} missing; cannot ensure defaults")
-
-              default_registry = os.environ["DEFAULT_REGISTRY"].strip()
-              default_image = os.environ["DEFAULT_IMAGE_NAME"].strip().lower()
-              default_tag = os.environ["DEFAULT_TAG"].strip()
-
-              defaults = {
-                  "REGISTRY": default_registry,
-                  "IMAGE_NAME": default_image,
-                  "TAG": default_tag,
-              }
-
-              text = env_file.read_text()
-              for key, value in defaults.items():
-                  if not value:
-                      continue
-                  pattern = re.compile(rf"^{key}=.*$", re.MULTILINE)
-                  match = pattern.search(text)
-                  if match:
-                      current = match.group(0).split("=", 1)[1].strip()
-                      if not current:
-                          text = pattern.sub(f"{key}={value}", text)
-                  else:
-                      if not text.endswith("\n"):
-                          text += "\n"
-                      text += f"{key}={value}\n"
-
-              env_file.write_text(text)
-          PY
+          ensure_var REGISTRY "$DEFAULT_REGISTRY"
+          ensure_var IMAGE_NAME "$(echo "$DEFAULT_IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          ensure_var TAG "$DEFAULT_TAG"
 
       - name: Validate environment (read-only)
         run: |
