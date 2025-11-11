@@ -193,7 +193,7 @@ jobs:
 
           # Read-only validations
           grep -q '^ENVIRONMENT=staging$' "$ENV_FILE" || { echo 'ERROR: ENVIRONMENT must be staging'; exit 1; }
-          grep -q '^DOMAIN=barrels.gd$' "$ENV_FILE" || { echo 'ERROR: DOMAIN must be barrels.gd'; exit 1; }
+          grep -q '^DOMAIN=staging.api.barrels.gd$' "$ENV_FILE" || { echo 'ERROR: DOMAIN must be staging.api.barrels.gd'; exit 1; }
           grep -q '^STACK_NAME=barrels-api-staging$' "$ENV_FILE" || { echo 'ERROR: STACK_NAME must be barrels-api-staging'; exit 1; }
           grep -q '^POSTGRES_DB=app_staging$' "$ENV_FILE" || { echo 'ERROR: POSTGRES_DB must be app_staging'; exit 1; }
 
