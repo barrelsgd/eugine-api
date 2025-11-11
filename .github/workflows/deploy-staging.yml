@@ -34,7 +34,7 @@ jobs:
             const sha = context.payload.workflow_run?.head_sha || context.sha;
 
             // Define gating policy
-            const REQUIRED = ['ci', 'test docker compose'];
+            const REQUIRED = ['ci success', 'test-docker-compose'];
             const EXCLUDED = ['verify checks for staging commit', 'deploy'];
 
             async function fetchFilteredRuns() {
