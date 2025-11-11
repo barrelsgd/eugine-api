@@ -211,6 +211,15 @@ jobs:
           if [ -z "$proj" ]; then proj=barrels-api-staging; fi
           echo "PROJECT_NAME=$proj" >> $GITHUB_ENV
 
+          # Require container image reference variables
+          for v in REGISTRY IMAGE_NAME TAG; do
+            if ! grep -q "^${v}=" "$ENV_FILE"; then echo "ERROR: ${v} missing in $ENV_FILE"; exit 1; fi
+            if grep -Eq "^${v}=[[:space:]]*$" "$ENV_FILE"; then echo "ERROR: ${v} must not be empty in $ENV_FILE"; exit 1; fi
+          done
+          if ! grep -Eq '^IMAGE_NAME=[[:alnum:]_.-]+/[[:alnum:]_.-]+$' "$ENV_FILE"; then
+            echo 'ERROR: IMAGE_NAME must be a fully qualified repo name like namespace/image'; exit 1;
+          fi
+
       - name: Link external env into workspace for Compose
         run: |
           # docker-compose services reference env_file: .env. Link external env for runtime.
