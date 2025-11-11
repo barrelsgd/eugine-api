@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1.7
+FROM python:3.11-slim@sha256:b596083aa14d47c78a652138aa9b98607585499d7c7ec343ae378f6c5770822d
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
@@ -11,7 +12,7 @@ COPY pyproject.toml ./
 COPY uv.lock ./
 
 # Install dependencies
-RUN uv sync --frozen --no-cache
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache
 
 # Copy application code
 COPY src ./src
@@ -19,12 +20,13 @@ COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 COPY email-templates ./email-templates
 COPY scripts ./scripts
-COPY pyproject.toml ./pyproject.toml
 
 # Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
-RUN chown -R appuser:appuser /app
-RUN mkdir -p /home/appuser/.cache/uv && chown -R appuser:appuser /home/appuser/.cache
+RUN groupadd -r appuser \
+    && useradd -r -g appuser -u 1000 appuser \
+    && chown -R appuser:appuser /app \
+    && mkdir -p /home/appuser/.cache/uv \
+    && chown -R appuser:appuser /home/appuser/.cache
 
 # Switch to non-root user
 USER appuser

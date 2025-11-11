@@ -76,12 +76,14 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.prod
+          pull: true
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.tags.outputs.primary_tag }}
             ${{ steps.tags.outputs.version_tag != '' && format('ghcr.io/{0}:{1}', github.repository, steps.tags.outputs.version_tag) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: true
           platforms: linux/amd64
 
       - name: Image digest and tags summary
