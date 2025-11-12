@@ -9,6 +9,12 @@ echo ""
 # Ensure we're in the right directory
 cd /app
 
+# Ensure uv is available
+if ! command -v uv >/dev/null 2>&1; then
+    echo "📥 Installing uv runtime..."
+    python -m pip install --no-cache-dir uv
+fi
+
 # Sync dependencies (install package + all dependencies)
 echo "📦 Syncing dependencies..."
 uv sync --frozen
