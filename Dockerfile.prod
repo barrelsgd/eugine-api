@@ -25,6 +25,9 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-cac
 # Stage 2: Runtime - Minimal production image
 FROM python:3.11-slim@sha256:b596083aa14d47c78a652138aa9b98607585499d7c7ec343ae378f6c5770822d
 
+# Include uv runtime for prestart tasks and operational tooling
+COPY --from=builder /bin/uv /bin/uv
+
 # Security: Install security updates
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
