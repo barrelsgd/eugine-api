@@ -249,6 +249,11 @@ jobs:
             echo 'ERROR: IMAGE_NAME must be a fully qualified repo name like namespace/image'; exit 1;
           fi
 
+      - name: Validate compose configuration
+        run: |
+          set -euo pipefail
+          docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml config >/dev/null
+
       - name: Authenticate with GHCR
         env:
           GHCR_USERNAME: barrelsgd
@@ -261,6 +266,13 @@ jobs:
           fi
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           echo "Authenticated to ghcr.io as $GHCR_USERNAME"
+
+      - name: Stop existing staging stack
+        run: |
+          set -euo pipefail
+          echo "Stopping any existing services for project ${{ env.PROJECT_NAME }}..."
+          docker compose --env-file "$ENV_FILE" -f docker-compose.staging.yml -p "${{ env.PROJECT_NAME }}" down --remove-orphans || true
+          echo "Existing services stopped (if any)."
 
       - name: Link external env into workspace for Compose
         run: |

@@ -1,4 +1,4 @@
-"""Tests for items models."""
+git"""Tests for items models."""
 
 import uuid
 

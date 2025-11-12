@@ -83,10 +83,28 @@ jobs:
           PROJECT_NAME=$(grep '^PROJECT_NAME=' .env | cut -d'=' -f2- | tr -d '\r' || echo "fast-back")
           echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
           echo "Using PROJECT_NAME: $PROJECT_NAME"
+      - name: Validate compose configuration
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml config >/dev/null
+      - name: Authenticate with GHCR
+        env:
+          GHCR_USERNAME: barrelsgd
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GHCR_TOKEN:-}" ]; then
+            echo "GHCR_PAT secret not provided; skipping GHCR login."
+          else
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            echo "Authenticated to ghcr.io as $GHCR_USERNAME"
+          fi
+      - name: Pull base images
+        run: |
+          set -euo pipefail
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml pull || true
       - name: Create traefik network (CI)
         run: docker network create traefik-public || true
       - name: Build with Docker Compose
-        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml build
+        run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml build --pull
       - name: Clean up any existing containers
         run: docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml down -v --remove-orphans
       - name: Start services (CI configuration)
@@ -154,19 +172,19 @@ jobs:
         run: |
           echo "Testing API health check endpoint..."
           # Retry logic for the health check with better error reporting
-          for i in {1..10}; do
-            echo "Attempt $i/10..."
+          for i in {1..5}; do
+            echo "Attempt $i/5..."
             if curl -f -s http://localhost:8000/api/v1/utils/health-check/; then
               echo "SUCCESS API health check successful!"
               exit 0
             else
-              echo "ERROR Health check failed (attempt $i/10), waiting 5 seconds..."
+              echo "ERROR Health check failed (attempt $i/5), waiting 3 seconds..."
               # Show API logs on failure for debugging
               if [ $i -eq 5 ]; then
                 echo "=== API Logs (last 20 lines) - Mid-attempt debugging ==="
                 docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs --tail=20 api || true
               fi
-              sleep 5
+              sleep 3
             fi
           done
           echo "ERROR All health check attempts failed"
@@ -228,3 +246,16 @@ jobs:
           echo ""
           echo "=== Port Usage ==="
           netstat -tlnp | grep -E ':(8000|5432)' || true
+      - name: Collect compose logs
+        if: failure()
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml logs > diagnostics/compose.log || true
+          docker compose --env-file .env -p "${{ env.PROJECT_NAME }}" -f docker-compose.yml -f docker-compose.override.yml ps > diagnostics/compose.ps || true
+      - name: Upload diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-diagnostics
+          path: diagnostics/
