@@ -30,6 +30,9 @@ services:
       db:
         condition: service_healthy
         restart: true
+    command: bash scripts/prestart.sh
+    env_file:
+      - .env
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
@@ -39,9 +42,6 @@ services:
       - SECRET_KEY=${SECRET_KEY?Variable not set}
       - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
       - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
-      - UV_SYSTEM_PYTHON=1
-      - UV_PYTHON=python
-    command: ["uv", "run", "bash", "scripts/prestart.sh"]
     networks:
       - default
 
