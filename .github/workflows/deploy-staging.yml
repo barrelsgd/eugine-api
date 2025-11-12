@@ -249,6 +249,19 @@ jobs:
             echo 'ERROR: IMAGE_NAME must be a fully qualified repo name like namespace/image'; exit 1;
           fi
 
+      - name: Authenticate with GHCR
+        env:
+          GHCR_USERNAME: barrelsgd
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GHCR_TOKEN:-}" ]; then
+            echo "ERROR: GHCR_PAT secret is not configured for this workflow." >&2
+            exit 1
+          fi
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+          echo "Authenticated to ghcr.io as $GHCR_USERNAME"
+
       - name: Link external env into workspace for Compose
         run: |
           # docker-compose services reference env_file: .env. Link external env for runtime.
