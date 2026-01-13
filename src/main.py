@@ -4,6 +4,7 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from pydantic import ValidationError
+from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.cors import CORSMiddleware
 
@@ -19,6 +20,7 @@ from src.exceptions import (
     validation_exception_handler,
 )
 from src.items.router import router as items_router
+from src.shipments.router import router as shipments_router
 from src.utils.router import router as utils_router
 
 
@@ -64,6 +66,7 @@ if settings.all_cors_origins:
     )
 
 # Include routers
+app.include_router(shipments_router, prefix="/api/v1")
 # Auth-related routers (split for better organization)
 app.include_router(login_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
@@ -71,6 +74,7 @@ app.include_router(roles_router, prefix="/api/v1")
 app.include_router(permissions_router, prefix="/api/v1")
 
 # Other routers
+
 app.include_router(items_router, prefix="/api/v1")
 app.include_router(utils_router, prefix="/api/v1")
 
@@ -90,3 +94,11 @@ if settings.ENVIRONMENT == "local":
     except ImportError:
         # Private module is optional
         pass
+
+
+@app.get("/scalar", include_in_schema=False)
+def get_scalar_docs():
+    return get_scalar_api_reference(
+        openapi_url=openapi_url,
+        title=settings.PROJECT_NAME,
+    )
